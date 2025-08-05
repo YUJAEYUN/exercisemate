@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDashboardRedirect } from '@/hooks/useAuthRedirect';
-import { useLoading } from '@/contexts/LoadingContext';
 import { useRouter } from 'next/navigation';
 import { 
   getGroup, 
@@ -29,10 +28,11 @@ import { DashboardSkeleton } from '@/components/ui/Skeleton';
 import { PWANotificationBanner } from '@/components/PWANotificationBanner';
 import { usePWANotifications } from '@/hooks/usePWANotifications';
 import { useClientNotifications } from '@/hooks/useClientNotifications';
+import { handleExerciseWithNotifications } from '@/lib/vercelNotifications';
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useDashboardRedirect();
-  const { withLoading } = useLoading();
+
   const router = useRouter();
   const [group, setGroup] = useState<Group | null>(null);
   const [todayExercise, setTodayExercise] = useState<ExerciseRecord | null>(null);
@@ -56,8 +56,8 @@ export default function DashboardPage() {
     }
   }, [weeklyStats, animatedProgress]);
 
-  // PWA 알림 훅 사용
-  const pwaNotifications = usePWANotifications();
+  // PWA 알림 훅 사용 (배너 표시용)
+  usePWANotifications();
 
   // 클라이언트 알림 훅 사용 (무료)
   const { handleExerciseComplete } = useClientNotifications();
@@ -134,6 +134,18 @@ export default function DashboardPage() {
       // 클라이언트 알림 처리 (목표 달성 등)
       if (weeklyStats) {
         handleExerciseComplete(weeklyStats.exerciseCount + 1, weeklyStats.goal);
+      }
+
+      // Vercel API를 통한 친구 알림 (무료!)
+      if (user.displayName && user.groupId) {
+        handleExerciseWithNotifications(
+          user.uid,
+          user.groupId,
+          exerciseType,
+          user.displayName,
+          weeklyStats?.exerciseCount || 0,
+          weeklyStats?.goal || 3
+        );
       }
 
       // 백그라운드에서 데이터 새로고침 (정확한 데이터 동기화)

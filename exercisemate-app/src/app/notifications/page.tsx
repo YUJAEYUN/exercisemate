@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { 
-  Bell, 
-  BellOff, 
-  ArrowLeft, 
-  Clock, 
+import {
+  Bell,
+  ArrowLeft,
+  Clock,
   Calendar,
   Target,
   AlertTriangle,

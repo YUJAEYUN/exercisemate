@@ -32,7 +32,7 @@ export function usePWANotifications() {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
       
       // iOS Safari 홈 화면 추가 확인
-      const isIOSStandalone = (window.navigator as any).standalone === true;
+      const isIOSStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
       
       // Android TWA 확인
       const isTWA = document.referrer.includes('android-app://');
@@ -137,15 +137,20 @@ export function usePWANotifications() {
   };
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 // PWA 설치 이벤트 리스너
 export function usePWAInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       
       // 방문 횟수 기반 배너 표시
       const visitCount = parseInt(localStorage.getItem('pwa-visit-count') || '0') + 1;
@@ -215,7 +220,7 @@ export function useBackgroundSync() {
     if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
       try {
         const registration = await navigator.serviceWorker.ready;
-        await registration.sync.register(tag);
+        await (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register(tag);
         console.log(`Background sync registered: ${tag}`);
       } catch (error) {
         console.error('Background sync registration failed:', error);

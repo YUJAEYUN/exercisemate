@@ -10,6 +10,14 @@ import {
 } from '@/lib/clientNotifications';
 import { getNotificationPermissionStatus } from '@/lib/notifications';
 
+interface NotificationSettings {
+  enabled: boolean;
+  reminderTime: string;
+  reminderDays: number[];
+  goalReminder: boolean;
+  penaltyWarning: boolean;
+}
+
 /**
  * 클라이언트 사이드 알림 관리 훅 (완전 무료)
  */
@@ -28,7 +36,7 @@ export function useClientNotifications() {
   }, [user]);
 
   // 알림 설정 변경 시 스케줄 업데이트
-  const updateNotificationSchedule = (settings: any) => {
+  const updateNotificationSchedule = (settings: NotificationSettings) => {
     const hasPermission = getNotificationPermissionStatus() === 'granted';
     
     if (hasPermission) {

@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Firebase Service Account Keys (매우 중요!)
+exercisemate-*.json
+*-firebase-adminsdk-*.json
+*serviceAccountKey*.json
+*service-account*.json
+
+# Firebase
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+
+# API Keys and Secrets
+*.key
+*.p12
+*.pfx

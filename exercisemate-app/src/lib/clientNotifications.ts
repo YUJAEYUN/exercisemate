@@ -5,13 +5,21 @@
 
 import { NotificationSettings } from '@/types';
 
+interface ExtendedNotificationOptions extends NotificationOptions {
+  actions?: Array<{
+    action: string;
+    title: string;
+    icon?: string;
+  }>;
+}
+
 interface ScheduledNotification {
   id: string;
   title: string;
   body: string;
   scheduledTime: number;
   type: 'reminder' | 'goal' | 'penalty';
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 class ClientNotificationManager {
@@ -56,7 +64,7 @@ class ClientNotificationManager {
       return;
     }
 
-    const options: NotificationOptions = {
+    const options: ExtendedNotificationOptions = {
       body: notification.body,
       icon: '/icons/icon-192x192.png',
       badge: '/icons/icon-72x72.png',
@@ -135,8 +143,9 @@ class ClientNotificationManager {
     try {
       const saved = localStorage.getItem(this.storageKey);
       if (saved) {
-        const notificationIds = JSON.parse(saved);
-        // 실제로는 더 복잡한 복원 로직이 필요하지만, 
+        // 저장된 알림 ID들을 파싱하지만 현재는 사용하지 않음
+        JSON.parse(saved);
+        // 실제로는 더 복잡한 복원 로직이 필요하지만,
         // 간단히 하기 위해 다음 알림만 다시 스케줄링
         this.scheduleNextReminder();
       }
@@ -169,7 +178,7 @@ class ClientNotificationManager {
     // 설정된 요일인지 확인
     if (!settings.reminderDays.includes(targetDay)) {
       // 다음 설정된 요일 찾기
-      let nextDay = new Date(targetTime);
+      const nextDay = new Date(targetTime);
       for (let i = 1; i <= 7; i++) {
         nextDay.setDate(nextDay.getDate() + 1);
         if (settings.reminderDays.includes(nextDay.getDay())) {

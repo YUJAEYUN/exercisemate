@@ -19,7 +19,6 @@ import {
   Users,
   Plus,
   UserPlus,
-  Settings,
   Copy,
   Edit3,
   UserMinus,
