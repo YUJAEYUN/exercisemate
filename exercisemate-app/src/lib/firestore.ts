@@ -12,7 +12,8 @@ import {
   limit,
   Timestamp,
   onSnapshot,
-  Unsubscribe
+  Unsubscribe,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type {
@@ -74,6 +75,7 @@ export async function createGroup(createdBy: string, data: GroupCreateForm): Pro
     name: data.name,
     members: [createdBy],
     weeklyGoal: data.weeklyGoal,
+    maxMembers: 2, // 기본값
     inviteCode,
     createdAt: now,
     updatedAt: now,
@@ -109,8 +111,9 @@ export async function joinGroupByInviteCode(userId: string, inviteCode: string):
   const groupDoc = snapshot.docs[0];
   const group = groupDoc.data() as Group;
   
-  if (group.members.length >= 2) {
-    throw new Error('그룹이 가득 찼습니다. (최대 2명)');
+  const maxMembers = group.maxMembers || 2; // 기존 그룹 호환성을 위한 기본값
+  if (group.members.length >= maxMembers) {
+    throw new Error(`그룹이 가득 찼습니다. (최대 ${maxMembers}명)`);
   }
   
   if (group.members.includes(userId)) {
@@ -129,12 +132,47 @@ export async function joinGroupByInviteCode(userId: string, inviteCode: string):
   return groupDoc.id;
 }
 
+export async function updateGroup(groupId: string, updates: Partial<Pick<Group, 'name' | 'weeklyGoal' | 'maxMembers'>>): Promise<void> {
+  const groupDoc = doc(groupsRef, groupId);
+  await updateDoc(groupDoc, {
+    ...updates,
+    updatedAt: Timestamp.now()
+  });
+}
+
+// 사용자의 모든 운동 기록과 통계 삭제 (소프트 리셋)
+export async function resetUserExerciseData(userId: string): Promise<void> {
+  const batch = writeBatch(db);
+
+  // 사용자의 모든 운동 기록 삭제
+  const exerciseRecordsQuery = query(
+    exerciseRecordsRef,
+    where('userId', '==', userId)
+  );
+  const exerciseRecordsSnapshot = await getDocs(exerciseRecordsQuery);
+  exerciseRecordsSnapshot.docs.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+
+  // 사용자의 모든 주간 통계 삭제
+  const weeklyStatsQuery = query(
+    weeklyStatsRef,
+    where('userId', '==', userId)
+  );
+  const weeklyStatsSnapshot = await getDocs(weeklyStatsQuery);
+  weeklyStatsSnapshot.docs.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+
+  await batch.commit();
+}
+
 export async function leaveGroup(userId: string, groupId: string): Promise<void> {
   const group = await getGroup(groupId);
   if (!group) throw new Error('그룹을 찾을 수 없습니다.');
-  
+
   const updatedMembers = group.members.filter(id => id !== userId);
-  
+
   if (updatedMembers.length === 0) {
     // 마지막 멤버가 나가면 그룹 삭제
     await deleteDoc(doc(groupsRef, groupId));
@@ -145,7 +183,10 @@ export async function leaveGroup(userId: string, groupId: string): Promise<void>
       updatedAt: Timestamp.now()
     });
   }
-  
+
+  // 사용자의 모든 운동 기록과 통계 삭제 (소프트 리셋)
+  await resetUserExerciseData(userId);
+
   // 사용자의 groupId 제거
   await updateUser(userId, { groupId: undefined });
 }

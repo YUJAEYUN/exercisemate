@@ -35,10 +35,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       try {
         if (firebaseUser) {
+          console.log('Firebase user logged in:', firebaseUser.uid);
+
           // Firebase 사용자가 있으면 Firestore에서 사용자 정보 가져오기
-          let userData = await getUser(firebaseUser.uid);
-          
+          let userData = null;
+
+          try {
+            userData = await getUser(firebaseUser.uid);
+            console.log('Existing user data:', userData);
+          } catch (getUserError) {
+            console.warn('Failed to get user data:', getUserError);
+          }
+
           if (!userData) {
+            console.log('Creating new user data...');
             // 새 사용자인 경우 기본 정보로 생성
             const newUserData: Partial<User> = {
               email: firebaseUser.email || '',
@@ -46,19 +56,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
               photoURL: firebaseUser.photoURL || '',
               // character는 캐릭터 선택 페이지에서 설정
             };
-            
-            await createUser(firebaseUser.uid, newUserData);
-            userData = await getUser(firebaseUser.uid);
+
+            try {
+              await createUser(firebaseUser.uid, newUserData);
+              userData = await getUser(firebaseUser.uid);
+              console.log('New user created:', userData);
+            } catch (createUserError) {
+              console.error('Failed to create user:', createUserError);
+              // 사용자 생성에 실패해도 기본 정보로 진행
+              userData = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                displayName: firebaseUser.displayName || '',
+                photoURL: firebaseUser.photoURL || '',
+                character: undefined, // 캐릭터 선택 페이지로 이동하도록
+                createdAt: new Date() as any,
+                updatedAt: new Date() as any
+              } as User;
+            }
           }
-          
+
           setUser(userData);
         } else {
           setUser(null);
         }
       } catch (error) {
         console.error('Auth state change error:', error);
-        toast.error('사용자 정보를 불러오는데 실패했습니다.');
-        setUser(null);
+        // 권한 문제인 경우에도 기본 Firebase 사용자 정보는 유지
+        if (firebaseUser) {
+          console.warn('Using fallback user data due to error');
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || '',
+            photoURL: firebaseUser.photoURL || '',
+            character: undefined, // 캐릭터 선택 페이지로 이동하도록
+            createdAt: new Date() as any,
+            updatedAt: new Date() as any
+          } as User);
+          toast.error('사용자 데이터 접근에 문제가 있습니다. Firebase 설정을 확인해주세요.');
+        } else {
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -117,11 +156,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+    // 사용자 정보 수동 새로고침 함수
+  const refreshUser = async () => {
+    if (!auth.currentUser) return;
+
+    try {
+      // 데이터베이스 업데이트가 완료될 시간을 위한 약간의 딜레이
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const userData = await getUser(auth.currentUser.uid);
+      if (userData) {
+        setUser(userData);
+        console.log('User data refreshed:', userData);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
     signInWithGoogle,
-    signOut
+    signOut,
+    refreshUser
   };
 
   return (

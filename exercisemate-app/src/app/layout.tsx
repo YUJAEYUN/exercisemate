@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "react-hot-toast";
 import { PWAProvider } from "@/components/PWAProvider";
+import { BottomNavigation } from "@/components/BottomNavigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,8 +20,6 @@ export const metadata: Metadata = {
   title: "오운완 챌린지",
   description: "친구와 함께하는 운동 습관 형성 챌린지",
   manifest: "/manifest.json",
-  themeColor: "#2563eb",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -28,13 +27,21 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" }
+      { url: "/icons/icon.svg", sizes: "any", type: "image/svg+xml" },
+      { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" }
     ],
     apple: [
-      { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" }
+      { url: "/icons/icon.svg", sizes: "any", type: "image/svg+xml" }
     ]
   }
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#2563eb'
 };
 
 export default function RootLayout({
@@ -49,7 +56,10 @@ export default function RootLayout({
       >
         <PWAProvider>
           <AuthProvider>
-            {children}
+            <div className="pb-16">
+              {children}
+            </div>
+            <BottomNavigation />
             <Toaster
               position="top-center"
               toastOptions={{

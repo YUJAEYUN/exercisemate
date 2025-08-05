@@ -17,20 +17,24 @@ import {
   Calendar,
   Users,
   Settings,
-  Trophy,
   FileText
 } from 'lucide-react';
 import Image from 'next/image';
 import type { Group, ExerciseRecord, WeeklyStats, ExerciseType } from '@/types';
+import { Timestamp } from 'firebase/firestore';
 import { getCurrentWeekCycle, getExerciseTypeLabel, getDaysUntilPenalty } from '@/lib/utils';
+import { ExerciseCelebration } from '@/components/ExerciseCelebration';
+import { DashboardSkeleton } from '@/components/ui/Skeleton';
 
 export default function DashboardPage() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [group, setGroup] = useState<Group | null>(null);
   const [todayExercise, setTodayExercise] = useState<ExerciseRecord | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationExerciseType, setCelebrationExerciseType] = useState<ExerciseType>('upper');
   const [exerciseLoading, setExerciseLoading] = useState(false);
 
   const loadDashboardData = useCallback(async () => {
@@ -60,7 +64,13 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Dashboard data loading error:', error);
-      toast.error('데이터를 불러오는데 실패했습니다.');
+      // Firebase 권한 에러인 경우 더 구체적인 처리
+      if (error instanceof Error && error.message.includes('permission')) {
+        console.warn('Firebase 권한 문제 - 대시보드 데이터 접근 실패');
+        toast.error('데이터 접근 권한이 없습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        toast.error('데이터를 불러오는데 실패했습니다.');
+      }
     } finally {
       setLoading(false);
     }
@@ -90,13 +100,31 @@ export default function DashboardPage() {
 
     try {
       setExerciseLoading(true);
+
+      // 즉시 UI 업데이트 (낙관적 업데이트)
+      const optimisticRecord: ExerciseRecord = {
+        id: 'temp-' + Date.now(),
+        userId: user.uid,
+        groupId: user.groupId,
+        date: new Date().toISOString().split('T')[0],
+        exerciseType,
+        createdAt: Timestamp.now()
+      };
+      setTodayExercise(optimisticRecord);
+
+      // 실제 데이터베이스에 저장
       await logExercise(user.uid, user.groupId, { exerciseType });
-      toast.success(`${getExerciseTypeLabel(exerciseType)} 운동이 기록되었습니다!`);
-      
-      // 데이터 새로고침
-      await loadDashboardData();
+
+      // 축하 애니메이션 표시
+      setCelebrationExerciseType(exerciseType);
+      setShowCelebration(true);
+
+      // 백그라운드에서 데이터 새로고침 (정확한 데이터 동기화)
+      loadDashboardData();
     } catch (error: unknown) {
       console.error('Exercise logging error:', error);
+      // 에러 발생 시 낙관적 업데이트 롤백
+      setTodayExercise(null);
       const errorMessage = error instanceof Error ? error.message : '운동 기록에 실패했습니다.';
       toast.error(errorMessage);
     } finally {
@@ -104,12 +132,17 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCelebrationComplete = () => {
+    setShowCelebration(false);
+
+    // 데이터베이스 변경사항이 완전히 반영되도록 새로고침
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
+
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!group) {
@@ -149,7 +182,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <button
-            onClick={signOut}
+            onClick={() => router.push('/settings')}
             className="p-2 text-gray-400 hover:text-gray-600"
           >
             <Settings className="w-5 h-5" />
@@ -162,16 +195,34 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <div className="text-center">
             {todayExercise ? (
-              <div>
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Trophy className="w-8 h-8 text-green-600" />
+              <div className="relative">
+                {/* 배경 장식 */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                  <div className="text-8xl">🎉</div>
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">
-                  오늘 운동 완료! 🎉
-                </h2>
-                <p className="text-gray-600">
-                  {getExerciseTypeLabel(todayExercise.exerciseType)} 운동을 하셨네요!
-                </p>
+
+                <div className="relative z-10">
+                  <div className="w-20 h-20 bg-gradient-to-r from-green-100 to-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                    <Image
+                      src={user?.character === 'cat' ? '/exercise_cat.png' : '/exercise_dog.png'}
+                      alt={user?.character === 'cat' ? '운동하는 고양이' : '운동하는 강아지'}
+                      width={60}
+                      height={60}
+                      className="object-cover"
+                    />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    오늘 운동 완료! 🎉
+                  </h2>
+                  <p className="text-gray-600 mb-2">
+                    {getExerciseTypeLabel(todayExercise.exerciseType)} 운동을 하셨네요!
+                  </p>
+                  <div className="bg-green-50 rounded-lg p-3 mt-3">
+                    <p className="text-green-800 font-medium text-sm">
+                      {user?.character === 'cat' ? '🐱 냥냥! 오늘도 대단해요!' : '🐶 멍멍! 오늘도 최고예요!'}
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <div>
@@ -187,27 +238,30 @@ export default function DashboardPage() {
                     disabled={exerciseLoading}
                     variant="outline"
                     size="sm"
-                    className="py-3"
+                    className="py-4 flex flex-col items-center space-y-1 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 hover:scale-105"
                   >
-                    상체
+                    <span className="text-2xl">💪</span>
+                    <span className="text-sm font-medium">상체</span>
                   </Button>
                   <Button
                     onClick={() => handleExerciseLog('lower')}
                     disabled={exerciseLoading}
                     variant="outline"
                     size="sm"
-                    className="py-3"
+                    className="py-4 flex flex-col items-center space-y-1 hover:bg-green-50 hover:border-green-300 transition-all duration-200 hover:scale-105"
                   >
-                    하체
+                    <span className="text-2xl">🦵</span>
+                    <span className="text-sm font-medium">하체</span>
                   </Button>
                   <Button
                     onClick={() => handleExerciseLog('cardio')}
                     disabled={exerciseLoading}
                     variant="outline"
                     size="sm"
-                    className="py-3"
+                    className="py-4 flex flex-col items-center space-y-1 hover:bg-red-50 hover:border-red-300 transition-all duration-200 hover:scale-105"
                   >
-                    유산소
+                    <span className="text-2xl">❤️</span>
+                    <span className="text-sm font-medium">유산소</span>
                   </Button>
                 </div>
               </div>
@@ -288,7 +342,7 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-gray-900">그룹 멤버</h3>
             <div className="flex items-center space-x-1 text-sm text-gray-600">
               <Users className="w-4 h-4" />
-              <span>{group.members.length}/2명</span>
+              <span>{group.members.length}/{group.maxMembers || 2}명</span>
             </div>
           </div>
           
@@ -311,7 +365,7 @@ export default function DashboardPage() {
               </div>
             ))}
             
-            {group.members.length < 2 && (
+            {group.members.length < (group.maxMembers || 2) && (
               <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
                 <p className="text-sm text-gray-500 mb-2">
                   친구를 초대해보세요!
@@ -324,6 +378,14 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 운동 축하 애니메이션 */}
+      <ExerciseCelebration
+        isVisible={showCelebration}
+        exerciseType={celebrationExerciseType}
+        character={user?.character || 'cat'}
+        onComplete={handleCelebrationComplete}
+      />
     </div>
   );
 }

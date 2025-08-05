@@ -18,6 +18,7 @@ export interface Group {
   name: string;
   members: string[]; // user UIDs
   weeklyGoal: number; // 주간 운동 목표 횟수
+  maxMembers: number; // 최대 멤버 수 (기본값: 2)
   inviteCode: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -116,6 +117,7 @@ export interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 export interface GroupContextType {
