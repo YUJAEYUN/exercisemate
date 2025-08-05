@@ -18,9 +18,9 @@ import {
   Users,
   Settings,
   Trophy,
-  Cat,
-  Dog
+  FileText
 } from 'lucide-react';
+import Image from 'next/image';
 import type { Group, ExerciseRecord, WeeklyStats, ExerciseType } from '@/types';
 import { getCurrentWeekCycle, getExerciseTypeLabel, getDaysUntilPenalty } from '@/lib/utils';
 
@@ -134,12 +134,14 @@ export default function DashboardPage() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              {user?.character === 'cat' ? (
-                <Cat className="w-6 h-6 text-blue-600" />
-              ) : (
-                <Dog className="w-6 h-6 text-blue-600" />
-              )}
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
+              <Image
+                src={user?.character === 'cat' ? '/exercise_cat.png' : '/exercise_dog.png'}
+                alt={user?.character === 'cat' ? '운동하는 고양이' : '운동하는 강아지'}
+                width={40}
+                height={40}
+                className="object-cover"
+              />
             </div>
             <div>
               <h1 className="font-semibold text-gray-900">{group.name}</h1>
@@ -251,6 +253,34 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* 벌칙 시스템 */}
+        {weeklyProgress < 100 && daysUntilPenalty <= 1 && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-red-900">⚠️ 벌칙 경고</h3>
+              <div className="text-sm text-red-600">
+                {daysUntilPenalty === 0 ? '오늘 마감!' : '내일 마감!'}
+              </div>
+            </div>
+
+            <p className="text-sm text-red-700 mb-4">
+              이번 주 목표를 달성하지 못하면 반성문을 작성해야 해요! 😱
+            </p>
+
+            <div className="flex space-x-3">
+              <Button
+                onClick={() => router.push('/penalty')}
+                variant="outline"
+                size="sm"
+                className="border-red-300 text-red-700 hover:bg-red-50"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                반성문 미리보기
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* 그룹 멤버 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">

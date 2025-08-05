@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { updateUser } from '@/lib/firestore';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'react-hot-toast';
-import { Cat, Dog } from 'lucide-react';
+import Image from 'next/image';
 
 export default function CharacterSelectPage() {
   const { user } = useAuth();
@@ -57,8 +57,14 @@ export default function CharacterSelectPage() {
             onClick={() => setSelectedCharacter('cat')}
           >
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
-                <Cat className="w-8 h-8 text-purple-600" />
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center overflow-hidden">
+                <Image
+                  src="/exercise_cat.png"
+                  alt="운동하는 고양이"
+                  width={64}
+                  height={64}
+                  className="object-cover"
+                />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">운동하는 고양이</h3>
@@ -83,8 +89,14 @@ export default function CharacterSelectPage() {
             onClick={() => setSelectedCharacter('dog')}
           >
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
-                <Dog className="w-8 h-8 text-orange-600" />
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden">
+                <Image
+                  src="/exercise_dog.png"
+                  alt="운동하는 강아지"
+                  width={64}
+                  height={64}
+                  className="object-cover"
+                />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">운동하는 강아지</h3>
