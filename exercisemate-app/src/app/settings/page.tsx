@@ -13,6 +13,7 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react';
 import Image from 'next/image';
+import { PWAStatus } from '@/components/PWANotificationBanner';
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -39,9 +40,7 @@ export default function SettingsPage() {
       icon: Bell,
       label: '알림 설정',
       description: '운동 리마인더 및 푸시 알림',
-      onClick: () => {
-        // TODO: 알림 설정 페이지 구현
-      },
+      onClick: () => router.push('/notifications'),
     },
     {
       icon: Shield,
@@ -131,6 +130,12 @@ export default function SettingsPage() {
             <LogOut className="w-5 h-5" />
             <span>로그아웃</span>
           </Button>
+        </div>
+
+        {/* PWA 상태 */}
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-4">앱 상태</h3>
+          <PWAStatus />
         </div>
 
         {/* 앱 정보 */}

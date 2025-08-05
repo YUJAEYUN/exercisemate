@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LoadingProvider } from "@/contexts/LoadingContext";
 import { Toaster } from "react-hot-toast";
 import { PWAProvider } from "@/components/PWAProvider";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -55,22 +56,24 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <PWAProvider>
-          <AuthProvider>
-            <div className="pb-16">
-              {children}
-            </div>
-            <BottomNavigation />
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                duration: 3000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-              }}
-            />
-          </AuthProvider>
+          <LoadingProvider>
+            <AuthProvider>
+              <div className="pb-16">
+                {children}
+              </div>
+              <BottomNavigation />
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  duration: 3000,
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
+                  },
+                }}
+              />
+            </AuthProvider>
+          </LoadingProvider>
         </PWAProvider>
       </body>
     </html>

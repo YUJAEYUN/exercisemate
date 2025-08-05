@@ -18,5 +18,21 @@
       "description": "오늘의 운동을 기록합니다",
       "url": "/dashboard"
     }
-  ]
+  ],
+
+  "gcm_sender_id": "103953800507",
+  "notification_preferences": {
+    "exercise_reminders": {
+      "title": "운동 리마인더",
+      "description": "매일 운동 시간을 알려드립니다"
+    },
+    "goal_achievements": {
+      "title": "목표 달성 알림",
+      "description": "주간 목표 달성 시 축하 메시지"
+    },
+    "penalty_warnings": {
+      "title": "벌칙 경고",
+      "description": "마감일 임박 시 경고 알림"
+    }
+  }
 }

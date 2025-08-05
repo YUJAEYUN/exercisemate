@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useGroupRedirect } from '@/hooks/useAuthRedirect';
+import { useLoading } from '@/contexts/LoadingContext';
 import { useRouter } from 'next/navigation';
 import {
   createGroup,
@@ -29,7 +30,8 @@ import type { Group, User as UserType } from '@/types';
 import { GroupPageSkeleton } from '@/components/ui/Skeleton';
 
 export default function GroupPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, loading: authLoading } = useGroupRedirect();
+  const { withLoading } = useLoading();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'create' | 'join' | 'manage'>('create');
   const [loading, setLoading] = useState(false);
@@ -48,21 +50,6 @@ export default function GroupPage() {
   const [editGroupName, setEditGroupName] = useState('');
   const [editWeeklyGoal, setEditWeeklyGoal] = useState(3);
   const [editMaxMembers, setEditMaxMembers] = useState(2);
-
-  useEffect(() => {
-    if (!user) {
-      router.push('/');
-      return;
-    }
-
-    if (user.groupId) {
-      setLoading(true);
-      loadGroupData().finally(() => setLoading(false));
-      setActiveTab('manage');
-    } else {
-      setLoading(false);
-    }
-  }, [user, router, loadGroupData]);
 
   const loadGroupData = useCallback(async () => {
     if (!user?.groupId) return;
@@ -90,58 +77,63 @@ export default function GroupPage() {
     }
   }, [user?.groupId]);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (user.groupId) {
+        setLoading(true);
+        loadGroupData().finally(() => setLoading(false));
+        setActiveTab('manage');
+      } else {
+        setActiveTab('create');
+        setLoading(false);
+      }
+    }
+  }, [user, authLoading, loadGroupData]);
+
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !groupName.trim()) return;
 
-    try {
-      setLoading(true);
-      await createGroup(user.uid, {
-        name: groupName.trim(),
-        weeklyGoal
-      });
+    await withLoading(async () => {
+      try {
+        await createGroup(user.uid, {
+          name: groupName.trim(),
+          weeklyGoal
+        });
 
-      // AuthContext의 사용자 정보 새로고침
-      await refreshUser();
+        toast.success('그룹이 생성되었습니다!');
 
-      toast.success('그룹이 생성되었습니다!');
-
-      // 데이터베이스 변경사항이 반영되도록 완전한 새로고침
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 1000);
-    } catch (error) {
-      console.error('Group creation error:', error);
-      toast.error('그룹 생성에 실패했습니다.');
-    } finally {
-      setLoading(false);
-    }
+        // 실시간 리스너가 자동으로 사용자 정보를 업데이트하므로 약간의 딜레이 후 이동
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1000);
+      } catch (error) {
+        console.error('Group creation error:', error);
+        toast.error('그룹 생성에 실패했습니다.');
+      }
+    }, '그룹을 생성하는 중...');
   };
 
   const handleJoinGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !inviteCode.trim()) return;
 
-    try {
-      setLoading(true);
-      await joinGroupByInviteCode(user.uid, inviteCode.trim().toUpperCase());
+    await withLoading(async () => {
+      try {
+        await joinGroupByInviteCode(user.uid, inviteCode.trim().toUpperCase());
 
-      // AuthContext의 사용자 정보 새로고침
-      await refreshUser();
+        toast.success('그룹에 참여했습니다!');
 
-      toast.success('그룹에 참여했습니다!');
-
-      // 데이터베이스 변경사항이 반영되도록 완전한 새로고침
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 1000);
-    } catch (error: unknown) {
-      console.error('Group join error:', error);
-      const errorMessage = error instanceof Error ? error.message : '그룹 참여에 실패했습니다.';
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+        // 실시간 리스너가 자동으로 사용자 정보를 업데이트하므로 약간의 딜레이 후 이동
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1000);
+      } catch (error: unknown) {
+        console.error('Group join error:', error);
+        const errorMessage = error instanceof Error ? error.message : '그룹 참여에 실패했습니다.';
+        toast.error(errorMessage);
+      }
+    }, '그룹에 참여하는 중...');
   };
 
   const handleUpdateGroup = async () => {
@@ -169,25 +161,21 @@ export default function GroupPage() {
     if (!group || !user) return;
 
     if (confirm('정말로 그룹을 나가시겠습니까?')) {
-      try {
-        setLoading(true);
-        await leaveGroup(user.uid, group.id);
+      await withLoading(async () => {
+        try {
+          await leaveGroup(user.uid, group.id);
 
-        // AuthContext의 사용자 정보 새로고침
-        await refreshUser();
+          toast.success('그룹에서 나갔습니다.');
 
-        toast.success('그룹에서 나갔습니다.');
-
-        // 데이터베이스 변경사항이 반영되도록 완전한 새로고침
-        setTimeout(() => {
-          window.location.href = '/group';
-        }, 1000);
-      } catch (error) {
-        console.error('Leave group error:', error);
-        toast.error('그룹 나가기에 실패했습니다.');
-      } finally {
-        setLoading(false);
-      }
+          // 실시간 리스너가 자동으로 사용자 정보를 업데이트하므로 약간의 딜레이 후 이동
+          setTimeout(() => {
+            router.push('/group');
+          }, 1000);
+        } catch (error) {
+          console.error('Leave group error:', error);
+          toast.error('그룹 나가기에 실패했습니다.');
+        }
+      }, '그룹에서 나가는 중...');
     }
   };
 

@@ -25,7 +25,7 @@ import type {
   GroupCreateForm,
   ExerciseLogForm
 } from '@/types';
-import { generateInviteCode, getCurrentWeekCycle, formatDate } from './utils';
+import { generateInviteCode, getCurrentWeekCycle, formatDate, APP_CONSTANTS } from './utils';
 
 // 컬렉션 참조
 const usersRef = collection(db, 'users');
@@ -75,7 +75,7 @@ export async function createGroup(createdBy: string, data: GroupCreateForm): Pro
     name: data.name,
     members: [createdBy],
     weeklyGoal: data.weeklyGoal,
-    maxMembers: 2, // 기본값
+    maxMembers: APP_CONSTANTS.DEFAULT_MAX_MEMBERS,
     inviteCode,
     createdAt: now,
     updatedAt: now,
@@ -111,7 +111,7 @@ export async function joinGroupByInviteCode(userId: string, inviteCode: string):
   const groupDoc = snapshot.docs[0];
   const group = groupDoc.data() as Group;
   
-  const maxMembers = group.maxMembers || 2; // 기존 그룹 호환성을 위한 기본값
+  const maxMembers = group.maxMembers || APP_CONSTANTS.DEFAULT_MAX_MEMBERS; // 기존 그룹 호환성을 위한 기본값
   if (group.members.length >= maxMembers) {
     throw new Error(`그룹이 가득 찼습니다. (최대 ${maxMembers}명)`);
   }
@@ -193,25 +193,22 @@ export async function leaveGroup(userId: string, groupId: string): Promise<void>
 
 // 운동 기록 관련 함수들
 export async function logExercise(
-  userId: string, 
-  groupId: string, 
+  userId: string,
+  groupId: string,
   data: ExerciseLogForm
 ): Promise<void> {
-  const today = formatDate(new Date());
-  
-  // 오늘 이미 운동했는지 확인
-  const q = query(
-    exerciseRecordsRef,
-    where('userId', '==', userId),
-    where('date', '==', today)
-  );
-  const snapshot = await getDocs(q);
-  
-  if (!snapshot.empty) {
-    throw new Error('오늘은 이미 운동을 기록했습니다.');
+  console.log('logExercise called with:', { userId, groupId, exerciseType: data.exerciseType });
+
+  if (!groupId) {
+    throw new Error('그룹에 가입되어 있지 않습니다.');
   }
-  
-  const recordId = doc(exerciseRecordsRef).id;
+
+  const today = formatDate(new Date());
+
+  // Race condition 방지를 위해 고유한 문서 ID 사용
+  const recordId = `${userId}_${today}`;
+  const recordRef = doc(exerciseRecordsRef, recordId);
+
   const recordData: Omit<ExerciseRecord, 'id'> = {
     userId,
     groupId,
@@ -219,11 +216,29 @@ export async function logExercise(
     exerciseType: data.exerciseType,
     createdAt: Timestamp.now()
   };
-  
-  await setDoc(doc(exerciseRecordsRef, recordId), recordData);
-  
-  // 주간 통계 업데이트
-  await updateWeeklyStats(userId, groupId);
+
+  try {
+    // 문서가 이미 존재하는지 확인하고 없을 때만 생성
+    const existingDoc = await getDoc(recordRef);
+    if (existingDoc.exists()) {
+      throw new Error('오늘은 이미 운동을 기록했습니다.');
+    }
+
+    console.log('Saving exercise record:', recordData);
+    await setDoc(recordRef, recordData);
+    console.log('Exercise record saved successfully');
+
+    // 주간 통계 업데이트
+    console.log('Starting weekly stats update...');
+    await updateWeeklyStats(userId, groupId);
+    console.log('Weekly stats update completed');
+  } catch (error) {
+    // Firestore 에러를 사용자 친화적 메시지로 변환
+    if (error instanceof Error && error.message.includes('already exists')) {
+      throw new Error('오늘은 이미 운동을 기록했습니다.');
+    }
+    throw error;
+  }
 }
 
 export async function getTodayExercise(userId: string): Promise<ExerciseRecord | null> {
@@ -248,45 +263,75 @@ export async function getWeeklyExerciseRecords(
   userId: string,
   weekStart: string
 ): Promise<ExerciseRecord[]> {
-  const weekCycle = getCurrentWeekCycle(new Date(weekStart));
-  const weekEnd = formatDate(weekCycle.end);
-  
-  const q = query(
-    exerciseRecordsRef,
-    where('userId', '==', userId),
-    where('date', '>=', weekStart),
-    where('date', '<=', weekEnd),
-    orderBy('date', 'desc')
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExerciseRecord));
+  try {
+    const weekCycle = getCurrentWeekCycle(new Date(weekStart));
+    const weekEnd = formatDate(weekCycle.end);
+
+    console.log('Querying weekly records from', weekStart, 'to', weekEnd);
+
+    // 가장 단순한 쿼리만 사용 (인덱스 에러 방지)
+    const q = query(
+      exerciseRecordsRef,
+      where('userId', '==', userId)
+    );
+
+    const snapshot = await getDocs(q);
+    const allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ExerciseRecord));
+
+    console.log('All user records:', allRecords.length);
+
+    // 클라이언트 사이드에서 날짜 필터링
+    const filteredRecords = allRecords.filter(record => {
+      const recordDate = record.date;
+      const isInRange = recordDate >= weekStart && recordDate <= weekEnd;
+      console.log(`Record ${recordDate}: ${isInRange ? 'IN' : 'OUT'} of range ${weekStart} - ${weekEnd}`);
+      return isInRange;
+    });
+
+    console.log('Found weekly records:', filteredRecords.length, 'out of', allRecords.length, 'total records');
+    return filteredRecords;
+  } catch (error) {
+    console.error('Error in getWeeklyExerciseRecords:', error);
+    // 에러 발생 시 빈 배열 반환
+    return [];
+  }
 }
 
 // 주간 통계 관련 함수들
 async function updateWeeklyStats(userId: string, groupId: string): Promise<void> {
-  const weekCycle = getCurrentWeekCycle();
-  const weekStart = weekCycle.weekString;
-  
-  // 이번 주 운동 기록 개수 계산
-  const records = await getWeeklyExerciseRecords(userId, weekStart);
-  const exerciseCount = records.length;
-  
-  // 그룹 정보에서 목표 가져오기
-  const group = await getGroup(groupId);
-  const goal = group?.weeklyGoal || 3;
-  
-  const statsId = `${userId}_${weekStart}`;
-  const statsData: Omit<WeeklyStats, 'userId'> & { userId: string } = {
-    userId,
-    groupId,
-    weekStart,
-    exerciseCount,
-    goal,
-    isRestWeek: false // 기본값, 나중에 수동으로 설정 가능
-  };
-  
-  await setDoc(doc(weeklyStatsRef, statsId), statsData);
+  try {
+    const weekCycle = getCurrentWeekCycle();
+    const weekStart = weekCycle.weekString;
+
+    console.log('Updating weekly stats for user:', userId, 'week:', weekStart);
+
+    // 이번 주 운동 기록 개수 계산
+    const records = await getWeeklyExerciseRecords(userId, weekStart);
+    const exerciseCount = records.length;
+
+    console.log('Found exercise records:', exerciseCount, 'records:', records);
+
+    // 그룹 정보에서 목표 가져오기
+    const group = await getGroup(groupId);
+    const goal = group?.weeklyGoal || 3;
+
+    const statsId = `${userId}_${weekStart}`;
+    const statsData: Omit<WeeklyStats, 'userId'> & { userId: string } = {
+      userId,
+      groupId,
+      weekStart,
+      exerciseCount,
+      goal,
+      isRestWeek: false // 기본값, 나중에 수동으로 설정 가능
+    };
+
+    console.log('Saving weekly stats:', statsData);
+    await setDoc(doc(weeklyStatsRef, statsId), statsData);
+    console.log('Weekly stats updated successfully');
+  } catch (error) {
+    console.error('Failed to update weekly stats:', error);
+    // 주간 통계 업데이트 실패해도 운동 기록은 저장되도록 에러를 던지지 않음
+  }
 }
 
 export async function getWeeklyStats(userId: string, weekStart: string): Promise<WeeklyStats | null> {

@@ -1,17 +1,21 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  signInWithPopup, 
-  GoogleAuthProvider, 
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
+import { doc, onSnapshot, Unsubscribe as FirestoreUnsubscribe } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
 import { getUser, createUser } from '@/lib/firestore';
 import type { User, AuthContextType } from '@/types';
 import { toast } from 'react-hot-toast';
+import { Timestamp } from 'firebase/firestore';
+import { APP_CONSTANTS, handleFirebaseError } from '@/lib/utils';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -32,6 +36,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let userDataUnsubscribe: FirestoreUnsubscribe | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       try {
         if (firebaseUser) {
@@ -70,14 +76,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 displayName: firebaseUser.displayName || '',
                 photoURL: firebaseUser.photoURL || '',
                 character: undefined, // 캐릭터 선택 페이지로 이동하도록
-                createdAt: new Date() as any,
-                updatedAt: new Date() as any
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
               } as User;
             }
           }
 
           setUser(userData);
+
+          // 사용자 데이터 실시간 리스너 설정
+          if (userData) {
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            userDataUnsubscribe = onSnapshot(userDocRef, (doc) => {
+              if (doc.exists()) {
+                const updatedUserData = doc.data() as User;
+                setUser(updatedUserData);
+                console.log('User data updated via listener:', updatedUserData);
+              }
+            }, (error) => {
+              console.error('User data listener error:', error);
+            });
+          }
         } else {
+          // 기존 리스너 정리
+          if (userDataUnsubscribe) {
+            userDataUnsubscribe();
+            userDataUnsubscribe = null;
+          }
           setUser(null);
         }
       } catch (error) {
@@ -91,8 +116,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             displayName: firebaseUser.displayName || '',
             photoURL: firebaseUser.photoURL || '',
             character: undefined, // 캐릭터 선택 페이지로 이동하도록
-            createdAt: new Date() as any,
-            updatedAt: new Date() as any
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
           } as User);
           toast.error('사용자 데이터 접근에 문제가 있습니다. Firebase 설정을 확인해주세요.');
         } else {
@@ -103,7 +128,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      if (userDataUnsubscribe) {
+        userDataUnsubscribe();
+      }
+    };
   }, []);
 
   const signInWithGoogle = async () => {
@@ -156,13 +186,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-    // 사용자 정보 수동 새로고침 함수
+  // 사용자 정보 수동 새로고침 함수
   const refreshUser = async () => {
     if (!auth.currentUser) return;
 
     try {
       // 데이터베이스 업데이트가 완료될 시간을 위한 약간의 딜레이
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, APP_CONSTANTS.REFRESH_DELAY));
 
       const userData = await getUser(auth.currentUser.uid);
       if (userData) {
@@ -171,6 +201,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (error) {
       console.error('Failed to refresh user data:', error);
+      const appError = handleFirebaseError(error);
+      toast.error(appError.userMessage || '사용자 정보 새로고침에 실패했습니다.');
     }
   };
 

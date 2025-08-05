@@ -1,38 +1,28 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useCharacterSelectRedirect } from '@/hooks/useAuthRedirect';
 import { useRouter } from 'next/navigation';
 import { CharacterSelector } from '@/components/CharacterSelector';
-import { getUser } from '@/lib/firestore';
 
 export default function CharacterSelectPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, loading: authLoading } = useCharacterSelectRedirect();
   const router = useRouter();
 
-  const handleCharacterComplete = async () => {
+  const handleCharacterComplete = () => {
     if (!user) return;
 
-    // AuthContext의 사용자 정보 새로고침
-    await refreshUser();
-
-    // 최신 사용자 정보를 다시 가져와서 groupId 확인
-    try {
-      const latestUserData = await getUser(user.uid);
-
+    // 실시간 리스너가 자동으로 사용자 정보를 업데이트하므로 약간의 딜레이 후 이동
+    setTimeout(() => {
       // 그룹이 있으면 대시보드로, 없으면 그룹 설정으로
-      if (latestUserData?.groupId) {
-        window.location.href = '/dashboard';
+      if (user.groupId) {
+        router.push('/dashboard');
       } else {
-        window.location.href = '/group';
+        router.push('/group');
       }
-    } catch (error) {
-      console.error('Failed to get latest user data:', error);
-      // 에러 발생 시 기본 동작
-      window.location.href = '/group';
-    }
+    }, 500);
   };
 
-  if (!user) {
+  if (authLoading || !user) {
     router.push('/');
     return null;
   }

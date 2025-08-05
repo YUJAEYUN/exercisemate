@@ -62,21 +62,17 @@ export function ExerciseCelebration({
       const messages = celebrationMessages[exerciseType];
       const randomMessage = messages[Math.floor(Math.random() * messages.length)];
       setCurrentMessage(randomMessage);
-      
+
       // 캐릭터 반응 메시지
       setCharacterMessage(characterReactions[character][exerciseType]);
-      
+
       // 컨페티 애니메이션 시작
       setShowConfetti(true);
-      
-      // 3초 후 자동으로 닫기
-      const timer = setTimeout(() => {
-        onComplete();
-      }, 3000);
-
-      return () => clearTimeout(timer);
+    } else {
+      // 모달이 닫힐 때 상태 초기화
+      setShowConfetti(false);
     }
-  }, [isVisible, exerciseType, character, onComplete]);
+  }, [isVisible, exerciseType, character]);
 
   if (!isVisible) return null;
 

@@ -212,3 +212,66 @@ export function removeLocalStorage(key: string): void {
     console.error('Failed to remove from localStorage:', error);
   }
 }
+
+// 에러 처리 유틸리티
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public userMessage?: string
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+export function handleFirebaseError(error: unknown): AppError {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const firebaseError = error as { code: string; message: string };
+
+    switch (firebaseError.code) {
+      case 'permission-denied':
+        return new AppError(
+          firebaseError.message,
+          'PERMISSION_DENIED',
+          '데이터 접근 권한이 없습니다. 잠시 후 다시 시도해주세요.'
+        );
+      case 'unavailable':
+        return new AppError(
+          firebaseError.message,
+          'SERVICE_UNAVAILABLE',
+          '서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.'
+        );
+      case 'not-found':
+        return new AppError(
+          firebaseError.message,
+          'NOT_FOUND',
+          '요청한 데이터를 찾을 수 없습니다.'
+        );
+      default:
+        return new AppError(
+          firebaseError.message,
+          firebaseError.code,
+          '알 수 없는 오류가 발생했습니다.'
+        );
+    }
+  }
+
+  if (error instanceof Error) {
+    return new AppError(error.message, 'UNKNOWN_ERROR', '알 수 없는 오류가 발생했습니다.');
+  }
+
+  return new AppError('Unknown error', 'UNKNOWN_ERROR', '알 수 없는 오류가 발생했습니다.');
+}
+
+// 상수 관리
+export const APP_CONSTANTS = {
+  DEFAULT_MAX_MEMBERS: 2,
+  REFRESH_DELAY: 500,
+  REDIRECT_DELAY: 1000,
+  EXERCISE_TYPES: {
+    upper: '상체 운동',
+    lower: '하체 운동',
+    cardio: '유산소 운동'
+  }
+} as const;

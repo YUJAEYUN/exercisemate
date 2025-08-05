@@ -6,10 +6,20 @@ export interface User {
   email: string;
   displayName?: string;
   photoURL?: string;
-  character: 'cat' | 'dog';
+  character?: 'cat' | 'dog'; // 캐릭터는 선택 후에 설정되므로 optional
   groupId?: string;
+  fcmToken?: string;
+  notificationSettings?: NotificationSettings;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface NotificationSettings {
+  enabled: boolean;
+  reminderTime: string; // "09:00" 형식
+  reminderDays: number[]; // 0=일요일, 1=월요일, ..., 6=토요일
+  goalReminder: boolean;
+  penaltyWarning: boolean;
 }
 
 // 그룹 타입

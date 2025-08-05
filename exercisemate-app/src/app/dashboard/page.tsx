@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useDashboardRedirect } from '@/hooks/useAuthRedirect';
+import { useLoading } from '@/contexts/LoadingContext';
 import { useRouter } from 'next/navigation';
 import { 
   getGroup, 
@@ -25,9 +26,13 @@ import { Timestamp } from 'firebase/firestore';
 import { getCurrentWeekCycle, getExerciseTypeLabel, getDaysUntilPenalty } from '@/lib/utils';
 import { ExerciseCelebration } from '@/components/ExerciseCelebration';
 import { DashboardSkeleton } from '@/components/ui/Skeleton';
+import { PWANotificationBanner } from '@/components/PWANotificationBanner';
+import { usePWANotifications } from '@/hooks/usePWANotifications';
+import { useClientNotifications } from '@/hooks/useClientNotifications';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useDashboardRedirect();
+  const { withLoading } = useLoading();
   const router = useRouter();
   const [group, setGroup] = useState<Group | null>(null);
   const [todayExercise, setTodayExercise] = useState<ExerciseRecord | null>(null);
@@ -36,6 +41,26 @@ export default function DashboardPage() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationExerciseType, setCelebrationExerciseType] = useState<ExerciseType>('upper');
   const [exerciseLoading, setExerciseLoading] = useState(false);
+  const [animatedProgress, setAnimatedProgress] = useState(0);
+
+  // 진행률 애니메이션 효과
+  useEffect(() => {
+    const weeklyProgress = weeklyStats ? (weeklyStats.exerciseCount / weeklyStats.goal) * 100 : 0;
+
+    if (weeklyProgress !== animatedProgress) {
+      const timer = setTimeout(() => {
+        setAnimatedProgress(weeklyProgress);
+      }, 300); // 데이터 로드 후 약간의 딜레이
+
+      return () => clearTimeout(timer);
+    }
+  }, [weeklyStats, animatedProgress]);
+
+  // PWA 알림 훅 사용
+  const pwaNotifications = usePWANotifications();
+
+  // 클라이언트 알림 훅 사용 (무료)
+  const { handleExerciseComplete } = useClientNotifications();
 
   const loadDashboardData = useCallback(async () => {
     if (!user?.groupId) return;
@@ -77,23 +102,10 @@ export default function DashboardPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/');
-      return;
+    if (!authLoading && user?.character && user?.groupId) {
+      loadDashboardData();
     }
-
-    if (!user.character) {
-      router.push('/character-select');
-      return;
-    }
-
-    if (!user.groupId) {
-      router.push('/group');
-      return;
-    }
-
-    loadDashboardData();
-  }, [user, router, loadDashboardData]);
+  }, [user, authLoading, loadDashboardData]);
 
   const handleExerciseLog = async (exerciseType: ExerciseType) => {
     if (!user?.groupId) return;
@@ -119,14 +131,28 @@ export default function DashboardPage() {
       setCelebrationExerciseType(exerciseType);
       setShowCelebration(true);
 
+      // 클라이언트 알림 처리 (목표 달성 등)
+      if (weeklyStats) {
+        handleExerciseComplete(weeklyStats.exerciseCount + 1, weeklyStats.goal);
+      }
+
       // 백그라운드에서 데이터 새로고침 (정확한 데이터 동기화)
-      loadDashboardData();
+      // 약간의 딜레이를 두어 데이터베이스 업데이트가 완료되도록 함
+      setTimeout(() => {
+        loadDashboardData();
+      }, 1000);
     } catch (error: unknown) {
       console.error('Exercise logging error:', error);
       // 에러 발생 시 낙관적 업데이트 롤백
       setTodayExercise(null);
-      const errorMessage = error instanceof Error ? error.message : '운동 기록에 실패했습니다.';
-      toast.error(errorMessage);
+
+      // Firebase 인덱스 에러 처리
+      if (error instanceof Error && error.message.includes('index')) {
+        toast.error('데이터베이스 인덱스를 생성하는 중입니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        const errorMessage = error instanceof Error ? error.message : '운동 기록에 실패했습니다.';
+        toast.error(errorMessage);
+      }
     } finally {
       setExerciseLoading(false);
     }
@@ -135,10 +161,8 @@ export default function DashboardPage() {
   const handleCelebrationComplete = () => {
     setShowCelebration(false);
 
-    // 데이터베이스 변경사항이 완전히 반영되도록 새로고침
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
+    // 새로고침 대신 데이터만 다시 로드
+    loadDashboardData();
   };
 
   if (loading) {
@@ -191,6 +215,9 @@ export default function DashboardPage() {
       </header>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+        {/* PWA 알림 배너 */}
+        <PWANotificationBanner />
+
         {/* 오늘 운동 상태 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <div className="text-center">
@@ -289,11 +316,24 @@ export default function DashboardPage() {
               </span>
             </div>
             
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden relative">
               <div
-                className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(weeklyProgress, 100)}%` }}
-              />
+                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-1000 ease-out relative"
+                style={{ width: `${Math.min(animatedProgress, 100)}%` }}
+              >
+                {/* 진행률이 0보다 클 때만 반짝이는 효과 */}
+                {animatedProgress > 0 && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse" />
+                )}
+
+                {/* 100% 달성 시 특별한 효과 */}
+                {animatedProgress >= 100 && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-green-500 animate-pulse" />
+                )}
+              </div>
+
+              {/* 배경에 미묘한 그라데이션 효과 */}
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-100 to-gray-300 opacity-50" />
             </div>
             
             {weeklyProgress >= 100 ? (
