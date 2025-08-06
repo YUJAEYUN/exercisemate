@@ -166,13 +166,6 @@ export async function showTestNotification() {
           badge: '/icons/icon-72x72.png',
           tag: 'test-notification',
           requireInteraction: true,
-          actions: [
-            {
-              action: 'open',
-              title: '앱 열기',
-              icon: '/icons/icon-96x96.png'
-            }
-          ],
           data: {
             url: '/dashboard',
             type: 'test'
