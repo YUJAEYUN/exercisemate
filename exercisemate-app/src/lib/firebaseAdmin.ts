@@ -1,26 +1,52 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
+import path from 'path';
 
 // Firebase Admin SDK 초기화
 const initializeFirebaseAdmin = () => {
   if (getApps().length === 0) {
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    
-    if (!privateKey || !process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL) {
-      throw new Error('Firebase Admin credentials are not properly configured');
-    }
+    try {
+      // 로컬 개발환경에서는 JSON 파일 사용
+      if (process.env.NODE_ENV === 'development') {
+        const serviceAccountPath = path.join(process.cwd(), 'exercisemate-58433568d833.json');
 
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
-      }),
-      projectId: process.env.FIREBASE_PROJECT_ID,
-    });
+        console.log('Initializing Firebase Admin with service account file:', serviceAccountPath);
+
+        initializeApp({
+          credential: cert(serviceAccountPath),
+          projectId: 'exercisemate'
+        });
+
+        console.log('Firebase Admin initialized successfully with JSON file');
+      }
+      // 프로덕션 환경에서는 환경변수 사용
+      else {
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+        if (!privateKey || !process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL) {
+          throw new Error('Firebase Admin credentials are not properly configured');
+        }
+
+        console.log('Initializing Firebase Admin with environment variables');
+
+        initializeApp({
+          credential: cert({
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: privateKey,
+          }),
+          projectId: process.env.FIREBASE_PROJECT_ID,
+        });
+
+        console.log('Firebase Admin initialized successfully with environment variables');
+      }
+    } catch (error) {
+      console.error('Failed to initialize Firebase Admin:', error);
+      throw error;
+    }
   }
-  
+
   return getApps()[0];
 };
 
