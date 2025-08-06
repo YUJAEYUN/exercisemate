@@ -159,3 +159,80 @@ export async function sendTestNotification(
     }
   );
 }
+
+/**
+ * 친구들에게 운동 완료 알림 전송 (Firebase Functions)
+ */
+export async function notifyFriendsExercise(
+  userId: string,
+  groupId: string,
+  exerciseType: string,
+  userName: string
+): Promise<SendNotificationResult> {
+  try {
+    console.log('🏃‍♂️ Notifying friends about exercise via Firebase Functions:', {
+      userId,
+      groupId,
+      exerciseType,
+      userName
+    });
+
+    const notifyFriends = httpsCallable(functions, 'notifyFriends');
+
+    const result = await notifyFriends({
+      userId,
+      groupId,
+      exerciseType,
+      userName
+    });
+
+    console.log('✅ Friends notification response:', result.data);
+    return result.data as SendNotificationResult;
+  } catch (error) {
+    console.error('❌ Friends notification error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+/**
+ * 그룹 목표 달성 알림 전송 (Firebase Functions)
+ */
+export async function notifyGroupGoalAchievement(
+  userId: string,
+  groupId: string,
+  exerciseCount: number,
+  goal: number,
+  userName: string
+): Promise<SendNotificationResult> {
+  try {
+    console.log('🎉 Notifying group about goal achievement via Firebase Functions:', {
+      userId,
+      groupId,
+      exerciseCount,
+      goal,
+      userName
+    });
+
+    const notifyGroupGoal = httpsCallable(functions, 'notifyGroupGoal');
+
+    const result = await notifyGroupGoal({
+      userId,
+      groupId,
+      exerciseCount,
+      goal,
+      userName
+    });
+
+    console.log('✅ Group goal notification response:', result.data);
+    return result.data as SendNotificationResult;
+  } catch (error) {
+    console.error('❌ Group goal notification error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}

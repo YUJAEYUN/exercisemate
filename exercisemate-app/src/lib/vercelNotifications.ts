@@ -1,8 +1,7 @@
 /**
- * Vercel Serverless Functions를 통한 친구 알림 (무료!)
+ * Firebase Functions를 통한 친구 알림
  */
 
-import { auth } from './firebase';
 import { useState, useEffect } from 'react';
 
 interface GroupProgress {
@@ -38,39 +37,18 @@ export async function notifyFriendsExercise(
   userName: string
 ): Promise<boolean> {
   try {
-    // Firebase Auth 토큰 가져오기
-    const user = auth.currentUser;
-    if (!user) {
-      console.error('User not authenticated');
+    // Firebase Functions 사용
+    const { notifyFriendsExercise: notifyFriendsViaFunctions } = await import('./fcmService');
+
+    const result = await notifyFriendsViaFunctions(userId, groupId, exerciseType, userName);
+
+    if (result.success) {
+      console.log('Friends notified successfully via Firebase Functions:', result);
+      return true;
+    } else {
+      console.error('Failed to notify friends via Firebase Functions:', result.error);
       return false;
     }
-
-    const token = await user.getIdToken();
-
-    const response = await fetch('/api/notify-friends', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        userId,
-        groupId,
-        exerciseType,
-        userName,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('Failed to notify friends:', error);
-      return false;
-    }
-
-    const result = await response.json();
-    console.log(`Notified ${result.notificationsSent} friends`);
-    return true;
-
   } catch (error) {
     console.error('Error notifying friends:', error);
     return false;
@@ -88,39 +66,18 @@ export async function notifyGroupGoalAchievement(
   userName: string
 ): Promise<boolean> {
   try {
-    const user = auth.currentUser;
-    if (!user) {
-      console.error('User not authenticated');
+    // Firebase Functions 사용
+    const { notifyGroupGoalAchievement: notifyGroupGoalViaFunctions } = await import('./fcmService');
+
+    const result = await notifyGroupGoalViaFunctions(userId, groupId, exerciseCount, goal, userName);
+
+    if (result.success) {
+      console.log('Group goal achievement notified successfully via Firebase Functions:', result);
+      return true;
+    } else {
+      console.error('Failed to notify group goal achievement via Firebase Functions:', result.error);
       return false;
     }
-
-    const token = await user.getIdToken();
-
-    const response = await fetch('/api/notify-group-goal', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        userId,
-        groupId,
-        exerciseCount,
-        goal,
-        userName,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('Failed to notify group goal:', error);
-      return false;
-    }
-
-    const result = await response.json();
-    console.log(`Notified ${result.notificationsSent} group members`);
-    return true;
-
   } catch (error) {
     console.error('Error notifying group goal:', error);
     return false;
