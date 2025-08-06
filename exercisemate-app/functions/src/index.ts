@@ -4,6 +4,7 @@
  */
 
 import {onCall} from "firebase-functions/v2/https";
+import {onSchedule} from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 
@@ -433,6 +434,267 @@ export const sendPersonalReminder = onCall(async (request) => {
     };
   } catch (error) {
     logger.error("개인 리마인더 알림 전송 실패", error);
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.",
+    };
+  }
+});
+
+// 매일 저녁 8시에 운동 리마인더 전송 (한국 시간 기준)
+export const dailyExerciseReminder = onSchedule({
+  schedule: "0 20 * * *", // 매일 20:00 (UTC)
+  timeZone: "Asia/Seoul",
+}, async (_event) => {
+  try {
+    logger.info("Daily exercise reminder started");
+
+    // 알림 설정이 활성화된 모든 사용자 조회
+    const usersSnapshot = await admin.firestore()
+      .collection("users")
+      .where("notificationSettings.enabled", "==", true)
+      .get();
+
+    if (usersSnapshot.empty) {
+      logger.info("No users with notifications enabled");
+      return;
+    }
+
+    const reminderPromises: Promise<any>[] = [];
+
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+
+      // FCM 토큰이 있는 사용자만 처리
+      if (userData.fcmToken) {
+        const reminderTime = userData.notificationSettings?.reminderTime || "20:00";
+        const currentHour = new Date().getHours();
+        const reminderHour = parseInt(reminderTime.split(":")[0]);
+
+        // 설정된 시간과 현재 시간이 일치하는 경우에만 알림 전송
+        if (currentHour === reminderHour) {
+          const message = {
+            token: userData.fcmToken,
+            notification: {
+              title: "🏃‍♂️ 운동할 시간이에요!",
+              body: "오늘도 목표를 향해 달려봐요! 💪",
+            },
+            data: {
+              type: "daily_reminder",
+              userId: userId,
+              url: "/dashboard",
+            },
+            webpush: {
+              fcmOptions: {
+                link: "/dashboard",
+              },
+            },
+          };
+
+          reminderPromises.push(
+            admin.messaging().send(message)
+              .then((response) => {
+                logger.info(`Daily reminder sent to user ${userId}`, {messageId: response});
+                return {userId, success: true, messageId: response};
+              })
+              .catch((error) => {
+                logger.error(`Failed to send daily reminder to user ${userId}`, error);
+                return {userId, success: false, error: error.message};
+              })
+          );
+        }
+      }
+    });
+
+    const results = await Promise.all(reminderPromises);
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.length - successCount;
+
+    logger.info("Daily exercise reminder completed", {
+      totalUsers: usersSnapshot.size,
+      remindersSent: results.length,
+      successCount,
+      failureCount,
+    });
+
+    // 로그만 남기고 반환값 없음
+    logger.info("Daily reminder process completed", {
+      success: true,
+      totalUsers: usersSnapshot.size,
+      remindersSent: results.length,
+      successCount,
+      failureCount,
+    });
+  } catch (error) {
+    logger.error("Daily exercise reminder failed", error);
+    throw error;
+  }
+});
+
+// 매주 일요일 저녁 9시에 주간 목표 리마인더 전송
+export const weeklyGoalReminder = onSchedule({
+  schedule: "0 21 * * 0", // 매주 일요일 21:00 (UTC)
+  timeZone: "Asia/Seoul",
+}, async (_event) => {
+  try {
+    logger.info("Weekly goal reminder started");
+
+    // 그룹에 속한 모든 사용자 조회
+    const usersSnapshot = await admin.firestore()
+      .collection("users")
+      .where("groupId", "!=", null)
+      .where("notificationSettings.enabled", "==", true)
+      .get();
+
+    if (usersSnapshot.empty) {
+      logger.info("No users in groups with notifications enabled");
+      return;
+    }
+
+    const reminderPromises: Promise<any>[] = [];
+
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+
+      if (userData.fcmToken) {
+        const message = {
+          token: userData.fcmToken,
+          notification: {
+            title: "📅 새로운 주가 시작됐어요!",
+            body: "이번 주도 운동 목표를 달성해봐요! 화이팅! 🔥",
+          },
+          data: {
+            type: "weekly_goal_reminder",
+            userId: userId,
+            url: "/dashboard",
+          },
+          webpush: {
+            fcmOptions: {
+              link: "/dashboard",
+            },
+          },
+        };
+
+        reminderPromises.push(
+          admin.messaging().send(message)
+            .then((response) => {
+              logger.info(`Weekly goal reminder sent to user ${userId}`, {messageId: response});
+              return {userId, success: true, messageId: response};
+            })
+            .catch((error) => {
+              logger.error(`Failed to send weekly goal reminder to user ${userId}`, error);
+              return {userId, success: false, error: error.message};
+            })
+        );
+      }
+    });
+
+    const results = await Promise.all(reminderPromises);
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.length - successCount;
+
+    logger.info("Weekly goal reminder completed", {
+      totalUsers: usersSnapshot.size,
+      remindersSent: results.length,
+      successCount,
+      failureCount,
+    });
+
+    // 로그만 남기고 반환값 없음
+    logger.info("Weekly reminder process completed", {
+      success: true,
+      totalUsers: usersSnapshot.size,
+      remindersSent: results.length,
+      successCount,
+      failureCount,
+    });
+  } catch (error) {
+    logger.error("Weekly goal reminder failed", error);
+    throw error;
+  }
+});
+
+// 수동으로 모든 사용자에게 테스트 알림 전송 (테스트용)
+export const sendTestReminderToAll = onCall(async (_request) => {
+  try {
+    logger.info("Manual test reminder started");
+
+    // 알림 설정이 활성화된 모든 사용자 조회
+    const usersSnapshot = await admin.firestore()
+      .collection("users")
+      .where("notificationSettings.enabled", "==", true)
+      .get();
+
+    if (usersSnapshot.empty) {
+      return {
+        success: false,
+        error: "알림 설정이 활성화된 사용자가 없습니다.",
+      };
+    }
+
+    const reminderPromises: Promise<any>[] = [];
+
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+
+      if (userData.fcmToken) {
+        const message = {
+          token: userData.fcmToken,
+          notification: {
+            title: "🧪 테스트 알림",
+            body: "푸시 알림이 정상적으로 작동하고 있어요! 💪",
+          },
+          data: {
+            type: "test_reminder",
+            userId: userId,
+            url: "/dashboard",
+          },
+          webpush: {
+            fcmOptions: {
+              link: "/dashboard",
+            },
+          },
+        };
+
+        reminderPromises.push(
+          admin.messaging().send(message)
+            .then((response) => {
+              logger.info(`Test reminder sent to user ${userId}`, {messageId: response});
+              return {userId, success: true, messageId: response};
+            })
+            .catch((error) => {
+              logger.error(`Failed to send test reminder to user ${userId}`, error);
+              return {userId, success: false, error: error.message};
+            })
+        );
+      }
+    });
+
+    const results = await Promise.all(reminderPromises);
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.length - successCount;
+
+    logger.info("Manual test reminder completed", {
+      totalUsers: usersSnapshot.size,
+      remindersSent: results.length,
+      successCount,
+      failureCount,
+    });
+
+    return {
+      success: true,
+      message: `${successCount}명에게 테스트 알림을 전송했습니다.`,
+      totalUsers: usersSnapshot.size,
+      remindersSent: results.length,
+      successCount,
+      failureCount,
+    };
+  } catch (error) {
+    logger.error("Manual test reminder failed", error);
 
     return {
       success: false,

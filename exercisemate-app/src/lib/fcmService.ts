@@ -250,6 +250,28 @@ export async function sendPersonalReminder(
 }
 
 /**
+ * 모든 사용자에게 테스트 알림 전송 (Firebase Functions)
+ */
+export async function sendTestReminderToAll(): Promise<SendNotificationResult> {
+  try {
+    console.log('🧪 Sending test reminder to all users via Firebase Functions');
+
+    const sendTestReminderToAll = httpsCallable(functions, 'sendTestReminderToAll');
+
+    const result = await sendTestReminderToAll({});
+
+    console.log('✅ Test reminder response:', result.data);
+    return result.data as SendNotificationResult;
+  } catch (error) {
+    console.error('❌ Test reminder error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+/**
  * 그룹 목표 달성 알림 전송 (Firebase Functions)
  */
 export async function notifyGroupGoalAchievement(

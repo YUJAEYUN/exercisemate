@@ -201,6 +201,27 @@ export default function NotificationsPage() {
     }
   };
 
+  // 모든 사용자에게 테스트 알림 전송
+  const handleTestReminderToAll = async () => {
+    setIsLoading(true);
+
+    try {
+      const { sendTestReminderToAll } = await import('@/lib/fcmService');
+      const result = await sendTestReminderToAll();
+
+      if (result.success) {
+        toast.success(`모든 사용자에게 테스트 알림을 전송했습니다! 🎉`);
+      } else {
+        toast.error(`테스트 알림 전송 실패: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Test reminder error:', error);
+      toast.error('테스트 알림 전송 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!user) {
     return null;
   }
@@ -370,6 +391,18 @@ export default function NotificationsPage() {
               <TestTube className="w-4 h-4" />
               <span>
                 {isLoading ? '전송 중...' : '서버 푸시 알림 테스트'}
+              </span>
+            </Button>
+
+            {/* 모든 사용자에게 테스트 알림 */}
+            <Button
+              onClick={handleTestReminderToAll}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              <TestTube className="w-4 h-4" />
+              <span>
+                {isLoading ? '전송 중...' : '모든 사용자에게 테스트 알림 📢'}
               </span>
             </Button>
 
