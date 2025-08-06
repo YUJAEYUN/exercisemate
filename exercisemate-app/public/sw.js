@@ -109,25 +109,14 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   console.log('Push event received:', event);
 
+  // 기본 알림 설정 (actions 제거로 persistent 문제 해결)
   let notificationData = {
-    title: '오운완 챌린지',
+    title: '🏃‍♂️ 오운완 챌린지',
     body: '운동할 시간이에요! 💪',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
     tag: 'exercise-reminder',
-    requireInteraction: true,
-    actions: [
-      {
-        action: 'open',
-        title: '운동 기록하기',
-        icon: '/icons/icon-96x96.png'
-      },
-      {
-        action: 'dismiss',
-        title: '나중에',
-        icon: '/icons/icon-96x96.png'
-      }
-    ],
+    requireInteraction: false, // actions가 없으므로 false로 설정
     data: {
       url: '/dashboard',
       type: 'daily_reminder'
@@ -166,32 +155,8 @@ self.addEventListener('notificationclick', (event) => {
 
   event.notification.close();
 
-  const { action } = event;
   const { url } = event.notification.data || {};
-
-  let targetUrl = url || '/dashboard';
-
-  // 액션별 처리
-  switch (action) {
-    case 'exercise':
-    case 'exercise_now':
-      targetUrl = '/dashboard';
-      break;
-    case 'share':
-      targetUrl = '/dashboard?share=true';
-      break;
-    case 'view_penalty':
-      targetUrl = '/penalty';
-      break;
-    case 'snooze':
-      // 스누즈 알림 스케줄링
-      scheduleSnoozeNotification();
-      return;
-    case 'dismiss':
-      return;
-    default:
-      targetUrl = url || '/dashboard';
-  }
+  const targetUrl = url || '/dashboard';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
@@ -221,20 +186,8 @@ function scheduleSnoozeNotification() {
       icon: '/icons/icon-192x192.png',
       badge: '/icons/icon-72x72.png',
       tag: 'snooze-reminder',
-      requireInteraction: true,
-      data: { url: '/dashboard', type: 'snooze_reminder' },
-      actions: [
-        {
-          action: 'exercise',
-          title: '운동 기록하기',
-          icon: '/icons/exercise-icon.png'
-        },
-        {
-          action: 'snooze',
-          title: '다시 30분 후',
-          icon: '/icons/snooze-icon.png'
-        }
-      ]
+      requireInteraction: false,
+      data: { url: '/dashboard', type: 'snooze_reminder' }
     });
   }, 30 * 60 * 1000); // 30분
 }

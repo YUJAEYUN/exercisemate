@@ -78,12 +78,19 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const notificationData = {
-          type,
-          senderId,
-          url,
-          ...data
+        // FCM data는 모든 값이 문자열이어야 함
+        const notificationData: Record<string, string> = {
+          type: String(type),
+          senderId: String(senderId),
+          url: String(url)
         };
+
+        // 추가 데이터가 있으면 문자열로 변환하여 추가
+        if (data) {
+          Object.entries(data).forEach(([key, value]) => {
+            notificationData[key] = String(value);
+          });
+        }
 
         await sendPushNotification(
           targetUser.fcmToken,
@@ -159,12 +166,19 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const notificationData = {
-          type,
-          senderId,
-          url,
-          ...data
+        // FCM data는 모든 값이 문자열이어야 함
+        const notificationData: Record<string, string> = {
+          type: String(type),
+          senderId: String(senderId),
+          url: String(url)
         };
+
+        // 추가 데이터가 있으면 문자열로 변환하여 추가
+        if (data) {
+          Object.entries(data).forEach(([key, value]) => {
+            notificationData[key] = String(value);
+          });
+        }
 
         const result = await sendMulticastNotification(
           tokens,
