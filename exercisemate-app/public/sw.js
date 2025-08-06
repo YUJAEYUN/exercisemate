@@ -37,6 +37,16 @@ self.addEventListener('activate', (event) => {
 
 // 네트워크 요청 가로채기
 self.addEventListener('fetch', (event) => {
+  // chrome-extension 요청은 무시
+  if (event.request.url.startsWith('chrome-extension://')) {
+    return;
+  }
+
+  // GET 요청만 캐시 처리
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -44,7 +54,7 @@ self.addEventListener('fetch', (event) => {
         if (response) {
           return response;
         }
-        
+
         // 캐시에 없으면 네트워크에서 가져오기
         return fetch(event.request).then((response) => {
           // 유효한 응답인지 확인
@@ -52,15 +62,29 @@ self.addEventListener('fetch', (event) => {
             return response;
           }
 
-          // 응답을 복제하여 캐시에 저장
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+          // 응답을 복제하여 캐시에 저장 (에러 처리 추가)
+          try {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              })
+              .catch((error) => {
+                console.warn('Cache put failed:', error);
+              });
+          } catch (error) {
+            console.warn('Response clone failed:', error);
+          }
 
           return response;
+        }).catch((error) => {
+          console.warn('Fetch failed:', error);
+          throw error;
         });
+      })
+      .catch((error) => {
+        console.warn('Cache match failed:', error);
+        return fetch(event.request);
       })
   );
 });

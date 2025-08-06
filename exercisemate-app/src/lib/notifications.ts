@@ -156,6 +156,7 @@ export async function showTestNotification() {
   try {
     if (!('Notification' in window)) {
       console.log('Notifications not supported');
+      alert('이 브라우저는 알림을 지원하지 않습니다.');
       return;
     }
 
@@ -163,43 +164,41 @@ export async function showTestNotification() {
 
     if (permission !== 'granted') {
       console.log('Notification permission denied');
+      alert('알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
       return;
     }
 
-    // Service Worker를 사용할 수 있는 경우
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.ready;
+    // 간단한 브라우저 알림만 사용 (actions 없이)
+    try {
+      const notification = new Notification('🏃‍♂️ 오운완 챌린지', {
+        body: '테스트 알림입니다! 💪',
+        icon: '/icons/icon-192x192.png',
+        tag: 'test-notification'
+      });
 
-        await registration.showNotification('🏃‍♂️ 오운완 챌린지', {
-          body: '테스트 알림입니다! 💪',
-          icon: '/icons/icon-192x192.png',
-          badge: '/icons/icon-72x72.png',
-          tag: 'test-notification',
-          data: {
-            url: '/dashboard',
-            type: 'test'
-          }
-        });
+      // 알림 클릭 시 앱으로 포커스
+      notification.onclick = function() {
+        window.focus();
+        notification.close();
+      };
 
-        console.log('Test notification sent via Service Worker');
-        return;
-      } catch (swError) {
-        console.warn('Service Worker notification failed, falling back to browser notification:', swError);
-      }
+      console.log('Test notification sent successfully');
+
+      // 3초 후 자동으로 닫기
+      setTimeout(() => {
+        notification.close();
+      }, 3000);
+
+    } catch (notificationError) {
+      console.error('Browser notification failed:', notificationError);
+      const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+      alert('알림 전송에 실패했습니다: ' + errorMessage);
     }
-
-    // Service Worker가 없거나 실패한 경우 브라우저 알림 사용
-    new Notification('🏃‍♂️ 오운완 챌린지', {
-      body: '테스트 알림입니다! 💪',
-      icon: '/icons/icon-192x192.png',
-      tag: 'test-notification'
-    });
-
-    console.log('Test notification sent via browser API');
 
   } catch (error) {
     console.error('Error sending test notification:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    alert('알림 테스트 중 오류가 발생했습니다: ' + errorMessage);
   }
 }
 
