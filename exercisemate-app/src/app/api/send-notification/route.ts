@@ -92,6 +92,15 @@ export async function POST(request: NextRequest) {
           });
         }
 
+        console.log('About to send FCM notification:', {
+          targetUserId,
+          hasToken: !!targetUser.fcmToken,
+          tokenLength: targetUser.fcmToken?.length || 0,
+          title,
+          body,
+          data: notificationData
+        });
+
         await sendPushNotification(
           targetUser.fcmToken,
           title,
