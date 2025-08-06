@@ -30,7 +30,6 @@ import { PWANotificationBanner } from '@/components/PWANotificationBanner';
 import { FeatureGuide } from '@/components/FeatureGuide';
 import { QuickActions } from '@/components/QuickActions';
 import { usePWANotifications } from '@/hooks/usePWANotifications';
-import { useClientNotifications } from '@/hooks/useClientNotifications';
 import { handleExerciseWithNotifications } from '@/lib/vercelNotifications';
 
 export default function DashboardPage() {
@@ -63,8 +62,7 @@ export default function DashboardPage() {
   // PWA 알림 훅 사용 (배너 표시용)
   usePWANotifications();
 
-  // 클라이언트 알림 훅 사용 (무료)
-  const { handleExerciseComplete } = useClientNotifications();
+  // 이제 모든 알림이 서버 푸시 알림으로 처리됩니다
 
   // 기능 가이드 초기화
   useEffect(() => {
@@ -146,9 +144,10 @@ export default function DashboardPage() {
       setCelebrationExerciseType(exerciseType);
       setShowCelebration(true);
 
-      // 클라이언트 알림 처리 (목표 달성 등)
-      if (weeklyStats) {
-        handleExerciseComplete(weeklyStats.exerciseCount + 1, weeklyStats.goal);
+      // 서버 푸시 알림 처리 (목표 달성 등)
+      if (weeklyStats && user) {
+        const { handleExerciseLogged } = await import('@/lib/clientNotifications');
+        await handleExerciseLogged(user.uid, weeklyStats.exerciseCount + 1, weeklyStats.goal);
       }
 
       // Vercel API를 통한 친구 알림 (무료!)

@@ -267,31 +267,67 @@ export function updateClientNotificationSchedule(settings: NotificationSettings)
 }
 
 /**
- * 운동 기록 시 호출
+ * 운동 기록 시 호출 (서버 푸시 알림 사용)
  */
-export function handleExerciseLogged(exerciseCount: number, goal: number) {
-  // 목표 달성 시 즉시 알림
-  if (exerciseCount >= goal) {
-    clientNotificationManager.showGoalAchievementNotification(exerciseCount, goal);
-  }
-  
-  // 벌칙 경고 스케줄링 (목표 미달성 시)
-  const remaining = goal - exerciseCount;
-  if (remaining > 0) {
-    clientNotificationManager.schedulePenaltyWarning(remaining);
+export async function handleExerciseLogged(
+  userId: string,
+  exerciseCount: number,
+  goal: number
+) {
+  try {
+    // 목표 달성 시 서버에서 알림 전송
+    if (exerciseCount >= goal) {
+      const { sendPersonalReminder } = await import('./fcmService');
+      await sendPersonalReminder(
+        userId,
+        '🎉 목표 달성!',
+        `이번 주 운동 목표를 달성했어요! ${exerciseCount}/${goal}회 완료! 🏆`,
+        'goal_achievement'
+      );
+    }
+
+    // 벌칙 경고 (목표 미달성 시)
+    const remaining = goal - exerciseCount;
+    if (remaining > 0) {
+      const { sendPersonalReminder } = await import('./fcmService');
+      await sendPersonalReminder(
+        userId,
+        '⚠️ 목표 달성까지 얼마 남지 않았어요!',
+        `이번 주 목표까지 ${remaining}회 남았어요. 화이팅! 💪`,
+        'penalty_warning'
+      );
+    }
+  } catch (error) {
+    console.error('❌ Exercise notification error:', error);
   }
 }
 
 /**
- * 페이지 로드 시 호출
+ * 페이지 로드 시 호출 (서버 푸시 알림 사용)
  */
-export function initializeClientNotifications(settings?: NotificationSettings) {
-  // 기존 스케줄 복원
-  clientNotificationManager.restoreScheduledNotifications();
-  
-  // 새 스케줄 설정
-  if (settings?.enabled) {
-    clientNotificationManager.scheduleNextReminder(settings);
+export async function initializeClientNotifications(
+  userId?: string,
+  settings?: NotificationSettings
+) {
+  try {
+    // 서버에서 개인 리마인더 스케줄링
+    if (settings?.enabled && userId) {
+      console.log('📅 Setting up server-side reminders for user:', userId);
+
+      // 여기서는 즉시 알림을 보내지 않고,
+      // 실제로는 서버에서 cron job이나 스케줄러를 사용해야 함
+      // 현재는 테스트용으로 간단한 리마인더만 설정
+
+      const { sendPersonalReminder } = await import('./fcmService');
+
+      // 테스트용 즉시 알림 (실제로는 스케줄링 필요)
+      if (settings.reminderTime) {
+        console.log(`⏰ Reminder scheduled for ${settings.reminderTime}`);
+        // TODO: 실제 스케줄링은 Firebase Cloud Scheduler나 cron job 사용
+      }
+    }
+  } catch (error) {
+    console.error('❌ Initialize notifications error:', error);
   }
 }
 

@@ -213,6 +213,43 @@ export async function notifyFriendsExercise(
 }
 
 /**
+ * 개인 리마인더 알림 전송 (Firebase Functions)
+ */
+export async function sendPersonalReminder(
+  userId: string,
+  title: string,
+  body: string,
+  type: string = 'personal_reminder'
+): Promise<SendNotificationResult> {
+  try {
+    console.log('⏰ Sending personal reminder via Firebase Functions:', {
+      userId,
+      title,
+      body,
+      type
+    });
+
+    const sendPersonalReminder = httpsCallable(functions, 'sendPersonalReminder');
+
+    const result = await sendPersonalReminder({
+      userId,
+      title,
+      body,
+      type
+    });
+
+    console.log('✅ Personal reminder response:', result.data);
+    return result.data as SendNotificationResult;
+  } catch (error) {
+    console.error('❌ Personal reminder error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+/**
  * 그룹 목표 달성 알림 전송 (Firebase Functions)
  */
 export async function notifyGroupGoalAchievement(
