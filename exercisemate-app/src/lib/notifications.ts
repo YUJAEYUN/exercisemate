@@ -48,31 +48,42 @@ export async function requestNotificationPermission(): Promise<boolean> {
  */
 export async function generateAndSaveFCMToken(userId: string): Promise<string | null> {
   try {
+    console.log('🔧 Starting FCM token generation for user:', userId);
+    console.log('🔧 VAPID Key available:', !!VAPID_KEY);
+    console.log('🔧 VAPID Key length:', VAPID_KEY?.length || 0);
+
     const messagingInstance = await messaging();
     if (!messagingInstance) {
-      console.log('Firebase Messaging is not supported');
+      console.error('❌ Firebase Messaging is not supported');
       return null;
     }
+    console.log('✅ Firebase Messaging instance created');
 
     if (!VAPID_KEY) {
-      console.error('VAPID key is not configured');
+      console.error('❌ VAPID key is not configured');
       return null;
     }
+    console.log('✅ VAPID key is configured');
 
     // 알림 권한 확인
+    console.log('🔧 Requesting notification permission...');
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) {
-      console.log('Notification permission denied');
+      console.error('❌ Notification permission denied');
       return null;
     }
+    console.log('✅ Notification permission granted');
 
     // FCM 토큰 생성
+    console.log('🔧 Generating FCM token...');
     const token = await getToken(messagingInstance, {
       vapidKey: VAPID_KEY,
     });
 
     if (token) {
-      console.log('FCM Token generated:', token);
+      console.log('✅ FCM Token generated successfully!');
+      console.log('🔧 Token length:', token.length);
+      console.log('🔧 Token preview:', token.substring(0, 50) + '...');
 
       // 현재 사용자 데이터 확인하여 토큰이 다른 경우에만 업데이트
       try {
@@ -98,11 +109,16 @@ export async function generateAndSaveFCMToken(userId: string): Promise<string | 
 
       return token;
     } else {
-      console.log('No registration token available');
+      console.error('❌ No registration token available');
       return null;
     }
   } catch (error) {
-    console.error('Error generating FCM token:', error);
+    console.error('❌ Error generating FCM token:', error);
+    console.error('❌ Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack'
+    });
     return null;
   }
 }
@@ -220,35 +236,20 @@ export function isNotificationSupported(): boolean {
 }
 
 /**
- * 서버에서 푸시 알림 전송 테스트
+ * Firebase Functions를 통한 서버 푸시 알림 전송 테스트
  */
-export async function testServerNotification(userId: string, idToken: string) {
+export async function testServerNotification(userId: string, idToken?: string) {
   try {
-    const response = await fetch('/api/send-notification', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`
-      },
-      body: JSON.stringify({
-        targetUserId: userId,
-        title: '🚀 서버 푸시 알림',
-        body: '서버에서 보내는 실시간 푸시 알림입니다! 🎉',
-        type: 'server_test',
-        url: '/dashboard',
-        data: {
-          timestamp: new Date().toISOString()
-        }
-      })
-    });
+    // Firebase Functions를 사용하여 알림 전송
+    const { sendTestNotification } = await import('@/lib/fcmService');
 
-    const result = await response.json();
+    const result = await sendTestNotification(userId);
 
-    if (response.ok) {
-      console.log('Server notification sent successfully:', result);
+    if (result.success) {
+      console.log('Firebase Functions notification sent successfully:', result);
       return { success: true, result };
     } else {
-      console.error('Server notification failed:', result);
+      console.error('Firebase Functions notification failed:', result);
       return { success: false, error: result.error };
     }
   } catch (error) {
