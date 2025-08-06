@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         }
 
         const tokens: string[] = [];
-        const userDetails: any[] = [];
+        const userDetails: { userId: string; displayName?: string }[] = [];
 
         for (const userId of targetUserIds) {
           try {
