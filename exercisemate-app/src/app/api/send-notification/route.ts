@@ -109,8 +109,18 @@ export async function POST(request: NextRequest) {
 
       } catch (error) {
         console.error('Error sending notification to single user:', error);
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          targetUserId: targetUserId,
+          fcmToken: targetUser?.fcmToken ? 'exists' : 'missing'
+        });
         return NextResponse.json(
-          { error: 'Failed to send notification to user' },
+          {
+            error: 'Failed to send notification to user',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            targetUserId: targetUserId
+          },
           { status: 500 }
         );
       }
@@ -176,9 +186,14 @@ export async function POST(request: NextRequest) {
         console.log('Users with tokens:', userDetails);
 
         if (tokens.length === 0) {
+          console.log('No FCM tokens found. User details:', userDetails);
           return NextResponse.json(
-            { error: 'No valid FCM tokens found for target users' },
-            { status: 404 }
+            {
+              error: 'No valid FCM tokens found for target users',
+              details: `Found ${targetUserIds.length} target users, but none have FCM tokens`,
+              targetUsers: userDetails
+            },
+            { status: 400 }
           );
         }
 
@@ -214,8 +229,19 @@ export async function POST(request: NextRequest) {
 
       } catch (error) {
         console.error('Error sending notifications to multiple users:', error);
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          targetUserIds: targetUserIds,
+          tokensCount: tokens.length
+        });
         return NextResponse.json(
-          { error: 'Failed to send notifications to users' },
+          {
+            error: 'Failed to send notifications to users',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            targetUserIds: targetUserIds,
+            tokensFound: tokens.length
+          },
           { status: 500 }
         );
       }
