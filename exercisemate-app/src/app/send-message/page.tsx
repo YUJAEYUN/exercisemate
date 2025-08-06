@@ -79,6 +79,8 @@ export default function SendMessagePage() {
 
     try {
       const groupData = await getGroup(user.groupId);
+      console.log('Loaded group data:', groupData);
+      console.log('Group members:', groupData?.members);
       setGroup(groupData);
     } catch (error) {
       console.error('Error loading group:', error);
@@ -136,6 +138,10 @@ export default function SendMessagePage() {
 
       // 그룹 멤버들에게 메시지 전송 (자신 제외)
       const targetUserIds = group.members.filter(memberId => memberId !== user.uid);
+
+      console.log('Group members:', group.members);
+      console.log('Current user ID:', user.uid);
+      console.log('Target user IDs:', targetUserIds);
 
       if (targetUserIds.length === 0) {
         toast.error('메시지를 받을 그룹 멤버가 없습니다.');

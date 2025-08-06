@@ -136,9 +136,14 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        console.log('Sender group members:', senderGroup.members);
+        console.log('Target user IDs:', targetUserIds);
+        console.log('Sender ID:', senderId);
+
         // 대상 사용자들이 모두 같은 그룹 멤버인지 확인
         for (const userId of targetUserIds) {
           if (!senderGroup.members.includes(userId)) {
+            console.log(`User ${userId} is not in the same group`);
             return NextResponse.json(
               { error: `User ${userId} is not in the same group` },
               { status: 403 }
@@ -147,17 +152,28 @@ export async function POST(request: NextRequest) {
         }
 
         const tokens: string[] = [];
+        const userDetails: any[] = [];
 
         for (const userId of targetUserIds) {
           try {
             const user = await getUser(userId);
+            console.log(`User ${userId}:`, {
+              exists: !!user,
+              hasFcmToken: !!(user?.fcmToken),
+              displayName: user?.displayName
+            });
+
             if (user && user.fcmToken) {
               tokens.push(user.fcmToken);
+              userDetails.push({ userId, displayName: user.displayName });
             }
           } catch (error) {
             console.warn(`Failed to get user ${userId}:`, error);
           }
         }
+
+        console.log('Valid tokens found:', tokens.length);
+        console.log('Users with tokens:', userDetails);
 
         if (tokens.length === 0) {
           return NextResponse.json(
