@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
-import { adminApp, sendNotificationToUser, sendMulticastNotification } from '@/lib/firebaseAdmin';
+import { adminApp, sendPushNotification, sendMulticastNotification } from '@/lib/firebaseAdmin';
 import { getUser, getGroup } from '@/lib/firestore';
 
 const auth = getAuth(adminApp);
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
           ...data
         };
 
-        await sendNotificationToUser(
+        await sendPushNotification(
           targetUser.fcmToken,
           title,
           body,
@@ -236,7 +236,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await sendNotificationToUser(
+    await sendPushNotification(
       testUser.fcmToken,
       '🧪 테스트 알림',
       '서버에서 보내는 푸시 알림 테스트입니다! 💪',

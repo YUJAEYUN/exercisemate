@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   Send,
   Users,
-  MessageCircle,
   Dumbbell,
   Coffee,
   Zap,
@@ -18,7 +17,7 @@ import {
 } from 'lucide-react';
 import { getGroup } from '@/lib/firestore';
 import { toast } from 'react-hot-toast';
-import type { Group, User } from '@/types';
+import type { Group } from '@/types';
 
 // 메시지 템플릿
 const MESSAGE_TEMPLATES = [
@@ -75,6 +74,20 @@ export default function SendMessagePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingGroup, setLoadingGroup] = useState(true);
 
+  const loadGroupData = useCallback(async () => {
+    if (!user?.groupId) return;
+
+    try {
+      const groupData = await getGroup(user.groupId);
+      setGroup(groupData);
+    } catch (error) {
+      console.error('Error loading group:', error);
+      toast.error('그룹 정보를 불러오는데 실패했습니다.');
+    } finally {
+      setLoadingGroup(false);
+    }
+  }, [user?.groupId]);
+
   useEffect(() => {
     if (!user) {
       router.push('/');
@@ -88,21 +101,7 @@ export default function SendMessagePage() {
     }
 
     loadGroupData();
-  }, [user, router]);
-
-  const loadGroupData = async () => {
-    if (!user?.groupId) return;
-
-    try {
-      const groupData = await getGroup(user.groupId);
-      setGroup(groupData);
-    } catch (error) {
-      console.error('Error loading group:', error);
-      toast.error('그룹 정보를 불러오는데 실패했습니다.');
-    } finally {
-      setLoadingGroup(false);
-    }
-  };
+  }, [user, router, loadGroupData]);
 
   const handleTemplateSelect = (templateId: string) => {
     const template = MESSAGE_TEMPLATES.find(t => t.id === templateId);
@@ -212,7 +211,7 @@ export default function SendMessagePage() {
             <div>
               <h1 className="text-lg font-semibold text-gray-900">그룹 메시지 보내기</h1>
               <p className="text-sm text-gray-600">
-                {group?.name} • {group?.members.length - 1}명에게 전송
+                {group?.name} • {(group?.members?.length || 1) - 1}명에게 전송
               </p>
             </div>
           </div>
@@ -229,7 +228,7 @@ export default function SendMessagePage() {
             <div>
               <h3 className="font-medium text-gray-900">{group?.name}</h3>
               <p className="text-sm text-gray-600">
-                총 {group?.members.length}명 (나 제외 {group?.members.length - 1}명에게 전송)
+                총 {group?.members?.length || 0}명 (나 제외 {(group?.members?.length || 1) - 1}명에게 전송)
               </p>
             </div>
           </div>
