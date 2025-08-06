@@ -90,8 +90,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
             userDataUnsubscribe = onSnapshot(userDocRef, (doc) => {
               if (doc.exists()) {
                 const updatedUserData = doc.data() as User;
-                setUser(updatedUserData);
-                console.log('User data updated via listener:', updatedUserData);
+                // 데이터가 실제로 변경된 경우에만 업데이트
+                const currentUserString = JSON.stringify(userData);
+                const updatedUserString = JSON.stringify(updatedUserData);
+
+                if (currentUserString !== updatedUserString) {
+                  setUser(updatedUserData);
+                  console.log('User data updated via listener:', updatedUserData);
+                } else {
+                  console.log('User data unchanged, skipping update');
+                }
               }
             }, (error) => {
               console.error('User data listener error:', error);

@@ -1,6 +1,6 @@
 import { getToken, onMessage } from 'firebase/messaging';
 import { messaging } from './firebase';
-import { updateUser } from './firestore';
+import { updateUser, getUser } from './firestore';
 import { toast } from 'react-hot-toast';
 
 // VAPID 키 (Firebase 콘솔에서 생성해야 함)
@@ -73,13 +73,29 @@ export async function generateAndSaveFCMToken(userId: string): Promise<string | 
 
     if (token) {
       console.log('FCM Token generated:', token);
-      
-      // Firestore에 토큰 저장
-      await updateUser(userId, { 
-        fcmToken: token,
-        notificationSettings: DEFAULT_NOTIFICATION_SETTINGS
-      });
-      
+
+      // 현재 사용자 데이터 확인하여 토큰이 다른 경우에만 업데이트
+      try {
+        const currentUser = await getUser(userId);
+        if (currentUser?.fcmToken !== token) {
+          console.log('FCM token changed, updating user data');
+          // Firestore에 토큰 저장
+          await updateUser(userId, {
+            fcmToken: token,
+            notificationSettings: DEFAULT_NOTIFICATION_SETTINGS
+          });
+        } else {
+          console.log('FCM token unchanged, skipping update');
+        }
+      } catch (error) {
+        console.error('Error checking current user data:', error);
+        // 에러 발생 시에도 토큰 업데이트 시도
+        await updateUser(userId, {
+          fcmToken: token,
+          notificationSettings: DEFAULT_NOTIFICATION_SETTINGS
+        });
+      }
+
       return token;
     } else {
       console.log('No registration token available');
@@ -136,14 +152,42 @@ export async function updateNotificationSettings(
 /**
  * 테스트 알림 전송 (개발용)
  */
-export function showTestNotification() {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('오운완 챌린지', {
-      body: '테스트 알림입니다! 💪',
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
-      tag: 'test-notification',
-    });
+export async function showTestNotification() {
+  try {
+    if ('serviceWorker' in navigator && 'Notification' in window) {
+      const permission = await Notification.requestPermission();
+
+      if (permission === 'granted') {
+        const registration = await navigator.serviceWorker.ready;
+
+        await registration.showNotification('🏃‍♂️ 오운완 챌린지', {
+          body: '테스트 알림입니다! 💪',
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-72x72.png',
+          tag: 'test-notification',
+          requireInteraction: true,
+          actions: [
+            {
+              action: 'open',
+              title: '앱 열기',
+              icon: '/icons/icon-96x96.png'
+            }
+          ],
+          data: {
+            url: '/dashboard',
+            type: 'test'
+          }
+        });
+
+        console.log('Test notification sent successfully');
+      } else {
+        console.log('Notification permission denied');
+      }
+    } else {
+      console.log('Service Worker or Notifications not supported');
+    }
+  } catch (error) {
+    console.error('Error sending test notification:', error);
   }
 }
 

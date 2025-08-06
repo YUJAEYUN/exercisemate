@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import { Toaster } from "react-hot-toast";
 import { PWAProvider } from "@/components/PWAProvider";
+import { FirebaseMessagingProvider } from "@/components/FirebaseMessagingProvider";
 import { BottomNavigation } from "@/components/BottomNavigation";
 
 const geistSans = Geist({
@@ -58,20 +59,22 @@ export default function RootLayout({
         <PWAProvider>
           <LoadingProvider>
             <AuthProvider>
-              <div className="pb-16">
-                {children}
-              </div>
-              <BottomNavigation />
-              <Toaster
-                position="top-center"
-                toastOptions={{
-                  duration: 3000,
-                  style: {
-                    background: '#363636',
-                    color: '#fff',
-                  },
-                }}
-              />
+              <FirebaseMessagingProvider>
+                <div className="pb-16">
+                  {children}
+                </div>
+                <BottomNavigation />
+                <Toaster
+                  position="top-center"
+                  toastOptions={{
+                    duration: 3000,
+                    style: {
+                      background: '#363636',
+                      color: '#fff',
+                    },
+                  }}
+                />
+              </FirebaseMessagingProvider>
             </AuthProvider>
           </LoadingProvider>
         </PWAProvider>

@@ -13,9 +13,14 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
+          // 메인 서비스 워커 등록
           const registration = await navigator.serviceWorker.register('/sw.js');
           console.log('SW registered: ', registration);
-          
+
+          // Firebase 메시징 서비스 워커 등록
+          const messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          console.log('Firebase Messaging SW registered: ', messagingRegistration);
+
           // 업데이트 확인
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
