@@ -99,7 +99,7 @@ export function QuickActions() {
       {/* 추가 도움말 */}
       <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
         <p className="text-sm text-yellow-800">
-          💡 <strong>처음 사용하시나요?</strong> 위의 "사용법 보기"를 클릭해서 앱 사용법을 확인해보세요!
+          💡 <strong>처음 사용하시나요?</strong> 위의 &quot;사용법 보기&quot;를 클릭해서 앱 사용법을 확인해보세요!
         </p>
       </div>
     </div>
