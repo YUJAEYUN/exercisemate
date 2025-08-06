@@ -1,54 +1,25 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
-import path from 'path';
 
 // Firebase Admin SDK 초기화
 const initializeFirebaseAdmin = () => {
   if (getApps().length === 0) {
     try {
-      // 로컬 개발환경에서는 JSON 파일 사용
-      if (process.env.NODE_ENV === 'development') {
-        const serviceAccountPath = path.join(process.cwd(), 'exercisemate-58433568d833.json');
-
-        console.log('Initializing Firebase Admin with service account file:', serviceAccountPath);
-
-        initializeApp({
-          credential: cert(serviceAccountPath),
-          projectId: 'exercisemate'
-        });
-
-        console.log('Firebase Admin initialized successfully with JSON file');
-      }
-      // 프로덕션 환경에서는 환경변수 사용
-      else {
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-
-        console.log('Environment variables check:', {
-          hasPrivateKey: !!privateKey,
-          hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
-          hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKeyLength: privateKey?.length || 0
-        });
-
-        if (!privateKey || !process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL) {
-          throw new Error('Firebase Admin credentials are not properly configured');
-        }
-
-        console.log('Initializing Firebase Admin with environment variables');
+      // 모든 환경에서 하드코딩된 서비스 계정 사용
+      {
+        console.log('Initializing Firebase Admin with hardcoded service account');
 
         initializeApp({
           credential: cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: privateKey,
+            projectId: "exercisemate",
+            clientEmail: "firebase-adminsdk-fbsvc@exercisemate.iam.gserviceaccount.com",
+            privateKey: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC6XwP2Z+k/IYEm\nOEXthS2EqQn5RFbupIAcZIDadZ/gyfds8Jkiijt5ZBKWHvISV0F6FV+9zbSRTnvt\nZzY+TdUD1cdlmFIqB/A7MrXCsw+FWobuIyTSuHsR8BxEtq/YQTpACeXpW3/sRdrz\nIMW7mkTt/ak26cMTGJfulhz+7ovlMrk9JtgD5azjrlDwJiCjwHGKb6teoOkNBHvh\nqXoXy/wBoS5ZfFMBhQDrbEiAxooUc3bjwNP1VYrr0U3CPBsmNew+OupiGe0DbiAt\nqoggChzcOba1VKsSmT5SSh8xcNYVqjtu9OA1I4mDn+TMsY/RkpjuxxuFChds4SoE\nan+pCq5RAgMBAAECggEABCooZAK5bxw4DxsV0PN3a239l5Dj4mxRopDKYldbjcHl\nog0UVvXA03sdgTZK0YcaovhETfEBVnfrBAiY6TaDCpVl4crQFzlbMG93KVUoBSJb\nPooRghX2RhXYA98TOeFnRFQUS60sRCLhfCpg0MrnPGw9Mklx/wS/LGk1V6sL/ECm\nph+jAWAAkbVMnyfwo/y7IQCr9QeQn1WNDObjE7N4+FYSaZj331spqSfzxZ62bfwI\nU2dn4UXsQdqBjCut+d9u1TNJlZAazXQeF09mm1K6bCzN+160UbnJE4rrPkkld5vd\nanyc5UCyHT8Do1Fy1ZQt4PIDASWPGcznF99aRXldOwKBgQDlAG/9dONWAM87KYx5\n53Wd8sSUY3QPt7/mewJwwGXQAEFDFjhlRK5TqgEKtJ9W11/wqKfEbSiOpeTtp8yR\njYxQGatj1IIuUmdN+mSIxWZ2dsS0HwTeWHYWxwwKdBOOLGhJmtfOFp24om5LZrTZ\nhGqPtjuLteMrLM2fcOREdjsG0wKBgQDQV+8H1KrFwyrkZswHw6gQYiA3HB8wDafO\nC62YZx9vE3WjeemPdjY0PFRxLVi/kky34t5zqcXCMKN/4vu0U6GIdEAHD1n5rXUG\n6o5315C6baIU/5kvJ18PMFhtJ5OwIw8/SuM7OLoxYabpqZ79ndNwPvHUp3XkDyF0\n8J3kWfGHywKBgQC5AmB34X5lFiRWRNwEBLZmVCLzS2IR7L7x4wF2vEnFAN+45nPL\nhPBeEWPkFUcB7uDI2kkoDZSNooNQaZeBJF1uvT5VWfOOnu5s9lVQlkKQhKWoa8MQ\nK2HERy14KI0/+KqMhLfC/UyRRVFcQ27qqOs6jdyPo/QTBpBdNuSEVwybFwKBgGnv\nPDfkF40ExotqBXYxMwRZkH3VC7qYRumKoJLsZFxLLbaYp3xto/P9dQYzA3ws/FtH\nvMpc2ZP6vTeqh0dSesDyMxgj4yED5IxGuXgQIKPaWN6KdC44u6nycBPYWszllrwc\n7NtQ5cN0HrWSrKfSFw9swfPZziTO2LkoG3Bfl2LvAoGAdEEaANQDRx+TulotuzFM\n1CVmNoW9Jz/CzZ6ZqTQAhgXcb5X2L851RRB0azxjdPnnFlNm7Hg/WRgn+9y5TTzb\n6T4Lw1K6Out78DquGyDkCICJWBlL2gCYX32Ie6xR0+qwLIxR9NIu9u0MpqeE3jE4\nMLBMDvPMHc9EkOan6o2E0tk=\n-----END PRIVATE KEY-----\n"
           }),
-          projectId: process.env.FIREBASE_PROJECT_ID,
+          projectId: 'exercisemate'
         });
 
-        console.log('Firebase Admin initialized successfully with environment variables');
+        console.log('Firebase Admin initialized successfully with hardcoded service account');
       }
     } catch (error) {
       console.error('Failed to initialize Firebase Admin:', error);
