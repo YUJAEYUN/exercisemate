@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
     const userId = decodedToken.uid;
 
     // 요청 본문 파싱
-    const body = await request.json();
-    const { groupId, exerciseCount, goal, userName } = body;
+    const requestBody = await request.json();
+    const { groupId, exerciseCount, goal, userName } = requestBody;
 
     if (!groupId || exerciseCount === undefined || !goal || !userName) {
       return NextResponse.json(
