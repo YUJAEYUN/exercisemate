@@ -45,6 +45,14 @@ interface SendToUserData {
   data?: Record<string, string>;
 }
 
+// 개인 리마인더 알림 인터페이스
+interface PersonalReminderData {
+  userId: string;
+  title: string;
+  body: string;
+  type: string;
+}
+
 // FCM 알림 전송 Function
 export const sendNotification = onCall(async (request) => {
   try {
@@ -359,6 +367,72 @@ export const notifyGroupGoal = onCall(async (request) => {
     };
   } catch (error) {
     logger.error("그룹 목표 달성 알림 전송 실패", error);
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.",
+    };
+  }
+});
+
+// 개인 리마인더 알림 Function
+export const sendPersonalReminder = onCall(async (request) => {
+  try {
+    const {userId, title, body, type} = request.data as PersonalReminderData;
+
+    // 입력 검증
+    if (!userId || !title || !body) {
+      throw new Error("userId, title, body는 필수 입력값입니다.");
+    }
+
+    // Firestore에서 사용자 정보 조회
+    const userDoc = await admin.firestore().collection("users").doc(userId).get();
+
+    if (!userDoc.exists) {
+      throw new Error("사용자를 찾을 수 없습니다.");
+    }
+
+    const userData = userDoc.data();
+    if (!userData?.fcmToken) {
+      throw new Error("사용자의 FCM 토큰이 없습니다.");
+    }
+
+    // FCM 메시지 구성
+    const message = {
+      token: userData.fcmToken,
+      notification: {
+        title,
+        body,
+      },
+      data: {
+        type: type || "personal_reminder",
+        userId: userId,
+        url: "/dashboard",
+      },
+      webpush: {
+        fcmOptions: {
+          link: "/dashboard",
+        },
+      },
+    };
+
+    // FCM 전송
+    const response = await admin.messaging().send(message);
+
+    logger.info("개인 리마인더 알림 전송 성공", {
+      messageId: response,
+      userId,
+      title,
+      body,
+    });
+
+    return {
+      success: true,
+      messageId: response,
+      message: "개인 리마인더 알림이 성공적으로 전송되었습니다.",
+    };
+  } catch (error) {
+    logger.error("개인 리마인더 알림 전송 실패", error);
 
     return {
       success: false,
