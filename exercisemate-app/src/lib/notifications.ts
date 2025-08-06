@@ -218,3 +218,41 @@ export function getNotificationPermissionStatus(): NotificationPermission {
 export function isNotificationSupported(): boolean {
   return 'Notification' in window && 'serviceWorker' in navigator;
 }
+
+/**
+ * 서버에서 푸시 알림 전송 테스트
+ */
+export async function testServerNotification(userId: string, idToken: string) {
+  try {
+    const response = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify({
+        targetUserId: userId,
+        title: '🚀 서버 푸시 알림',
+        body: '서버에서 보내는 실시간 푸시 알림입니다! 🎉',
+        type: 'server_test',
+        url: '/dashboard',
+        data: {
+          timestamp: new Date().toISOString()
+        }
+      })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      console.log('Server notification sent successfully:', result);
+      return { success: true, result };
+    } else {
+      console.error('Server notification failed:', result);
+      return { success: false, error: result.error };
+    }
+  } catch (error) {
+    console.error('Error sending server notification:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}

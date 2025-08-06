@@ -17,7 +17,8 @@ import {
   Calendar,
   Users,
   Settings,
-  FileText
+  FileText,
+  MessageCircle
 } from 'lucide-react';
 import Image from 'next/image';
 import type { Group, ExerciseRecord, WeeklyStats, ExerciseType } from '@/types';
@@ -392,9 +393,18 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">그룹 멤버</h3>
-            <div className="flex items-center space-x-1 text-sm text-gray-600">
-              <Users className="w-4 h-4" />
-              <span>{group.members.length}/{group.maxMembers || 2}명</span>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => router.push('/send-message')}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>메시지</span>
+              </button>
+              <div className="flex items-center space-x-1 text-sm text-gray-600">
+                <Users className="w-4 h-4" />
+                <span>{group.members.length}/{group.maxMembers || 2}명</span>
+              </div>
             </div>
           </div>
           

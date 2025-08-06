@@ -37,8 +37,8 @@ self.addEventListener('activate', (event) => {
 
 // 네트워크 요청 가로채기
 self.addEventListener('fetch', (event) => {
-  // chrome-extension 요청은 무시
-  if (event.request.url.startsWith('chrome-extension://')) {
+  // chrome-extension, devtools, 또는 다른 스킴 요청은 무시
+  if (!event.request.url.startsWith('http')) {
     return;
   }
 
@@ -47,43 +47,59 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // API 요청은 캐시하지 않음
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
-      .then((response) => {
-        // 캐시에 있으면 캐시에서 반환
-        if (response) {
-          return response;
+      .then((cachedResponse) => {
+        // 캐시에 있으면 캐시에서 반환하고, 백그라운드에서 업데이트
+        if (cachedResponse) {
+          // 백그라운드에서 최신 버전 가져오기 (stale-while-revalidate)
+          fetch(event.request)
+            .then((freshResponse) => {
+              if (freshResponse && freshResponse.status === 200 && freshResponse.type === 'basic') {
+                caches.open(CACHE_NAME)
+                  .then((cache) => {
+                    cache.put(event.request, freshResponse.clone());
+                  })
+                  .catch(() => {
+                    // 캐시 업데이트 실패는 무시
+                  });
+              }
+            })
+            .catch(() => {
+              // 네트워크 실패는 무시
+            });
+
+          return cachedResponse;
         }
 
         // 캐시에 없으면 네트워크에서 가져오기
-        return fetch(event.request).then((response) => {
-          // 유효한 응답인지 확인
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
+        return fetch(event.request)
+          .then((response) => {
+            // 유효한 응답인지 확인
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
 
-          // 응답을 복제하여 캐시에 저장 (에러 처리 추가)
-          try {
+            // 응답을 복제하여 캐시에 저장
             const responseToCache = response.clone();
             caches.open(CACHE_NAME)
               .then((cache) => {
                 cache.put(event.request, responseToCache);
               })
-              .catch((error) => {
-                console.warn('Cache put failed:', error);
+              .catch(() => {
+                // 캐시 저장 실패는 무시
               });
-          } catch (error) {
-            console.warn('Response clone failed:', error);
-          }
 
-          return response;
-        }).catch((error) => {
-          console.warn('Fetch failed:', error);
-          throw error;
-        });
+            return response;
+          });
       })
-      .catch((error) => {
-        console.warn('Cache match failed:', error);
+      .catch(() => {
+        // 캐시 조회 실패 시 네트워크에서 직접 가져오기
         return fetch(event.request);
       })
   );
@@ -151,7 +167,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const { action } = event;
-  const { url, type } = event.notification.data || {};
+  const { url } = event.notification.data || {};
 
   let targetUrl = url || '/dashboard';
 

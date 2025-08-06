@@ -19,7 +19,8 @@ import {
   updateNotificationSettings,
   generateAndSaveFCMToken,
   requestNotificationPermission,
-  getNotificationPermissionStatus
+  getNotificationPermissionStatus,
+  testServerNotification
 } from '@/lib/notifications';
 import { useClientNotifications } from '@/hooks/useClientNotifications';
 import { NotificationStatus } from '@/components/NotificationPermissionRequest';
@@ -153,9 +154,50 @@ export default function NotificationsPage() {
   const handleTestNotification = () => {
     if (permissionStatus === 'granted') {
       showTestNotification();
-      toast.success('테스트 알림을 전송했습니다!');
+      toast.success('클라이언트 테스트 알림을 전송했습니다!');
     } else {
       toast.error('알림 권한이 필요합니다.');
+    }
+  };
+
+  const handleServerTestNotification = async () => {
+    if (!user) return;
+
+    if (permissionStatus !== 'granted') {
+      toast.error('알림 권한이 필요합니다.');
+      return;
+    }
+
+    if (!user.fcmToken) {
+      toast.error('FCM 토큰이 없습니다. 알림을 다시 활성화해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Firebase Auth 토큰 가져오기
+      const { auth } = await import('@/lib/firebase');
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        toast.error('인증되지 않은 사용자입니다.');
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken();
+      const result = await testServerNotification(user.uid, idToken);
+
+      if (result.success) {
+        toast.success('서버 푸시 알림을 전송했습니다! 🚀');
+      } else {
+        toast.error(`서버 알림 전송 실패: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Server notification test error:', error);
+      toast.error('서버 알림 테스트 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -306,15 +348,36 @@ export default function NotificationsPage() {
 
         {/* 테스트 알림 */}
         {settings.enabled && (
-          <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="bg-white rounded-xl p-6 shadow-sm space-y-3">
+            <h3 className="font-medium text-gray-900 mb-3">알림 테스트</h3>
+
+            {/* 클라이언트 알림 테스트 */}
             <Button
               onClick={handleTestNotification}
               variant="outline"
               className="w-full flex items-center justify-center space-x-2"
             >
               <TestTube className="w-4 h-4" />
-              <span>테스트 알림 보내기</span>
+              <span>클라이언트 알림 테스트</span>
             </Button>
+
+            {/* 서버 푸시 알림 테스트 */}
+            <Button
+              onClick={handleServerTestNotification}
+              disabled={isLoading || !user?.fcmToken}
+              className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <TestTube className="w-4 h-4" />
+              <span>
+                {isLoading ? '전송 중...' : '서버 푸시 알림 테스트'}
+              </span>
+            </Button>
+
+            {!user?.fcmToken && (
+              <p className="text-xs text-gray-500 text-center">
+                FCM 토큰이 없습니다. 알림을 다시 활성화해주세요.
+              </p>
+            )}
           </div>
         )}
       </div>
