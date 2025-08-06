@@ -169,9 +169,26 @@ export class GroupActivityFeed {
   }
 
   /**
-   * 그룹 활동 폴링 시작
+   * 그룹 활동 폴링 시작 (최적화됨)
    */
-  startPolling(callback: (activities: GroupActivity[]) => void, intervalMs: number = 30000) {
+  startPolling(callback: (activities: GroupActivity[]) => void, intervalMs: number = 60000) { // 1분으로 증가
+    // 페이지가 보이지 않을 때는 폴링 중지
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        this.stopPolling();
+      } else {
+        this.resumePolling(callback, intervalMs);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    this.resumePolling(callback, intervalMs);
+  }
+
+  private resumePolling(callback: (activities: GroupActivity[]) => void, intervalMs: number) {
+    if (this.pollInterval) return; // 이미 실행 중이면 중복 방지
+
     this.pollInterval = setInterval(async () => {
       try {
         const progress = await getGroupProgress(this.groupId);
@@ -201,7 +218,13 @@ export class GroupActivityFeed {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
+    // 이벤트 리스너 정리
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
   }
+
+  private handleVisibilityChange = () => {
+    // 이미 위에서 정의됨
+  };
 }
 
 /**

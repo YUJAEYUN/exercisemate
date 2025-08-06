@@ -1,11 +1,13 @@
-const CACHE_NAME = 'exercisemate-v1';
+const CACHE_NAME = 'exercisemate-v2'; // 버전 업데이트
 const urlsToCache = [
   '/',
   '/dashboard',
   '/character-select',
   '/group',
   '/penalty',
-  '/manifest.json'
+  '/manifest.json',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png'
 ];
 
 // Service Worker 설치
@@ -55,24 +57,29 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
-        // 캐시에 있으면 캐시에서 반환하고, 백그라운드에서 업데이트
+        // 캐시에 있으면 즉시 반환 (성능 우선)
         if (cachedResponse) {
-          // 백그라운드에서 최신 버전 가져오기 (stale-while-revalidate)
-          fetch(event.request)
-            .then((freshResponse) => {
-              if (freshResponse && freshResponse.status === 200 && freshResponse.type === 'basic') {
-                caches.open(CACHE_NAME)
-                  .then((cache) => {
-                    cache.put(event.request, freshResponse.clone());
-                  })
-                  .catch(() => {
-                    // 캐시 업데이트 실패는 무시
-                  });
-              }
-            })
-            .catch(() => {
-              // 네트워크 실패는 무시
-            });
+          // 중요한 리소스만 백그라운드 업데이트
+          if (event.request.url.includes('/dashboard') ||
+              event.request.url.includes('/api/') ||
+              event.request.url.endsWith('.js') ||
+              event.request.url.endsWith('.css')) {
+
+            // 백그라운드에서 최신 버전 가져오기 (throttled)
+            setTimeout(() => {
+              fetch(event.request)
+                .then((freshResponse) => {
+                  if (freshResponse && freshResponse.status === 200 && freshResponse.type === 'basic') {
+                    caches.open(CACHE_NAME)
+                      .then((cache) => {
+                        cache.put(event.request, freshResponse.clone());
+                      })
+                      .catch(() => {});
+                  }
+                })
+                .catch(() => {});
+            }, 100); // 100ms 딜레이로 성능 향상
+          }
 
           return cachedResponse;
         }
@@ -85,15 +92,16 @@ self.addEventListener('fetch', (event) => {
               return response;
             }
 
-            // 응답을 복제하여 캐시에 저장
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              })
-              .catch(() => {
-                // 캐시 저장 실패는 무시
-              });
+            // 중요한 리소스만 캐시 저장
+            if (event.request.method === 'GET' &&
+                !event.request.url.includes('/api/')) {
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(event.request, responseToCache);
+                })
+                .catch(() => {});
+            }
 
             return response;
           });

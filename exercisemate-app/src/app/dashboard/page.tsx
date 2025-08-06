@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useDashboardRedirect } from '@/hooks/useAuthRedirect';
 import { useRouter } from 'next/navigation';
-import { 
-  getGroup, 
-  getTodayExercise, 
-  logExercise, 
+import {
+  getGroup,
+  getTodayExercise,
+  logExercise,
   getWeeklyStats,
-  subscribeToGroup 
+  subscribeToGroup
 } from '@/lib/firestore';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'react-hot-toast';
@@ -24,13 +24,15 @@ import Image from 'next/image';
 import type { Group, ExerciseRecord, WeeklyStats, ExerciseType } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 import { getCurrentWeekCycle, getExerciseTypeLabel, getDaysUntilPenalty } from '@/lib/utils';
-import { ExerciseCelebration } from '@/components/ExerciseCelebration';
 import { DashboardSkeleton } from '@/components/ui/Skeleton';
 import { PWANotificationBanner } from '@/components/PWANotificationBanner';
-import { FeatureGuide } from '@/components/FeatureGuide';
-import { QuickActions } from '@/components/QuickActions';
 import { usePWANotifications } from '@/hooks/usePWANotifications';
 import { handleExerciseWithNotifications } from '@/lib/vercelNotifications';
+
+// 지연 로딩 컴포넌트들
+const ExerciseCelebration = lazy(() => import('@/components/ExerciseCelebration').then(module => ({ default: module.ExerciseCelebration })));
+const FeatureGuide = lazy(() => import('@/components/FeatureGuide').then(module => ({ default: module.FeatureGuide })));
+const QuickActions = lazy(() => import('@/components/QuickActions').then(module => ({ default: module.QuickActions })));
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useDashboardRedirect();
@@ -46,18 +48,21 @@ export default function DashboardPage() {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const [showFeatureGuide, setShowFeatureGuide] = useState(false);
 
-  // 진행률 애니메이션 효과
-  useEffect(() => {
-    const weeklyProgress = weeklyStats ? (weeklyStats.exerciseCount / weeklyStats.goal) * 100 : 0;
+  // 진행률 계산 최적화
+  const weeklyProgress = useMemo(() => {
+    return weeklyStats ? Math.min((weeklyStats.exerciseCount / weeklyStats.goal) * 100, 100) : 0;
+  }, [weeklyStats]);
 
+  // 진행률 애니메이션 효과 (디바운스 적용)
+  useEffect(() => {
     if (weeklyProgress !== animatedProgress) {
       const timer = setTimeout(() => {
         setAnimatedProgress(weeklyProgress);
-      }, 300); // 데이터 로드 후 약간의 딜레이
+      }, 300);
 
       return () => clearTimeout(timer);
     }
-  }, [weeklyStats, animatedProgress]);
+  }, [weeklyProgress, animatedProgress]);
 
   // PWA 알림 훅 사용 (배너 표시용)
   usePWANotifications();
@@ -208,7 +213,6 @@ export default function DashboardPage() {
     );
   }
 
-  const weeklyProgress = weeklyStats ? (weeklyStats.exerciseCount / weeklyStats.goal) * 100 : 0;
   const daysUntilPenalty = getDaysUntilPenalty();
 
   return (
@@ -454,22 +458,28 @@ export default function DashboardPage() {
         </div>
 
         {/* 빠른 액션 */}
-        <QuickActions />
+        <Suspense fallback={<div className="h-32 bg-gray-100 rounded-xl animate-pulse" />}>
+          <QuickActions />
+        </Suspense>
       </div>
 
       {/* 운동 축하 애니메이션 */}
-      <ExerciseCelebration
-        isVisible={showCelebration}
-        exerciseType={celebrationExerciseType}
-        character={user?.character || 'cat'}
-        onComplete={handleCelebrationComplete}
-      />
+      <Suspense fallback={null}>
+        <ExerciseCelebration
+          isVisible={showCelebration}
+          exerciseType={celebrationExerciseType}
+          character={user?.character || 'cat'}
+          onComplete={handleCelebrationComplete}
+        />
+      </Suspense>
 
       {/* 기능 가이드 */}
-      <FeatureGuide
-        isOpen={showFeatureGuide}
-        onClose={() => setShowFeatureGuide(false)}
-      />
+      <Suspense fallback={null}>
+        <FeatureGuide
+          isOpen={showFeatureGuide}
+          onClose={() => setShowFeatureGuide(false)}
+        />
+      </Suspense>
     </div>
   );
 }

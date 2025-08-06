@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   signInWithPopup,
   GoogleAuthProvider,
@@ -84,22 +84,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           setUser(userData);
 
-          // 사용자 데이터 실시간 리스너 설정
+          // 사용자 데이터 실시간 리스너 설정 (최적화됨)
           if (userData) {
             const userDocRef = doc(db, 'users', firebaseUser.uid);
             userDataUnsubscribe = onSnapshot(userDocRef, (doc) => {
               if (doc.exists()) {
                 const updatedUserData = doc.data() as User;
-                // 데이터가 실제로 변경된 경우에만 업데이트
-                const currentUserString = JSON.stringify(userData);
-                const updatedUserString = JSON.stringify(updatedUserData);
+                // 얕은 비교로 성능 개선
+                setUser(prevUser => {
+                  if (!prevUser) return updatedUserData;
 
-                if (currentUserString !== updatedUserString) {
-                  setUser(updatedUserData);
-                  console.log('User data updated via listener:', updatedUserData);
-                } else {
-                  console.log('User data unchanged, skipping update');
-                }
+                  // 주요 필드만 비교하여 성능 향상
+                  const hasChanged =
+                    prevUser.character !== updatedUserData.character ||
+                    prevUser.groupId !== updatedUserData.groupId ||
+                    prevUser.fcmToken !== updatedUserData.fcmToken ||
+                    JSON.stringify(prevUser.notificationSettings) !== JSON.stringify(updatedUserData.notificationSettings);
+
+                  return hasChanged ? updatedUserData : prevUser;
+                });
               }
             }, (error) => {
               console.error('User data listener error:', error);

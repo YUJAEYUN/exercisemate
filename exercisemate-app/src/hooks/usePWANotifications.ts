@@ -25,18 +25,18 @@ export function usePWANotifications() {
     isLoading: false
   });
 
-  // PWA 설치 상태 감지
+  // PWA 설치 상태 감지 (최적화됨)
   useEffect(() => {
     const checkPWAInstallation = () => {
       // 스탠드얼론 모드 확인
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-      
+
       // iOS Safari 홈 화면 추가 확인
       const isIOSStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-      
+
       // Android TWA 확인
       const isTWA = document.referrer.includes('android-app://');
-      
+
       return isStandalone || isIOSStandalone || isTWA;
     };
 
@@ -44,12 +44,20 @@ export function usePWANotifications() {
       return 'Notification' in window && 'serviceWorker' in navigator;
     };
 
+    // 한 번만 실행하고 캐시
+    const isInstalled = checkPWAInstallation();
+    const isSupported = checkNotificationSupport();
+    const hasPermission = getNotificationPermissionStatus() === 'granted';
+
     setState(prev => ({
       ...prev,
-      isInstalled: checkPWAInstallation(),
-      isSupported: checkNotificationSupport(),
-      hasPermission: getNotificationPermissionStatus() === 'granted'
+      isInstalled,
+      isSupported,
+      hasPermission
     }));
+
+    // 로컬 스토리지에 캐시하여 다음 로드 시 빠르게 사용
+    localStorage.setItem('pwa-state', JSON.stringify({ isInstalled, isSupported }));
   }, []);
 
   // PWA 설치 후 자동 알림 권한 요청
