@@ -1,20 +1,34 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
+import path from 'path';
 
 // Firebase Admin SDK 초기화
 const initializeFirebaseAdmin = () => {
   if (getApps().length === 0) {
     try {
-      // 모든 환경에서 하드코딩된 서비스 계정 사용
-      {
+      // 로컬 개발환경에서는 새로운 JSON 파일 사용
+      if (process.env.NODE_ENV === 'development') {
+        const serviceAccountPath = path.join(process.cwd(), 'exercisemate-firebase-adminsdk-fbsvc-df64703270.json');
+
+        console.log('Initializing Firebase Admin with new service account file:', serviceAccountPath);
+
+        initializeApp({
+          credential: cert(serviceAccountPath),
+          projectId: 'exercisemate'
+        });
+
+        console.log('Firebase Admin initialized successfully with new JSON file');
+      }
+      // 프로덕션 환경에서는 하드코딩된 서비스 계정 사용
+      else {
         console.log('Initializing Firebase Admin with hardcoded service account');
 
         initializeApp({
           credential: cert({
             projectId: "exercisemate",
             clientEmail: "firebase-adminsdk-fbsvc@exercisemate.iam.gserviceaccount.com",
-            privateKey: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC6XwP2Z+k/IYEm\nOEXthS2EqQn5RFbupIAcZIDadZ/gyfds8Jkiijt5ZBKWHvISV0F6FV+9zbSRTnvt\nZzY+TdUD1cdlmFIqB/A7MrXCsw+FWobuIyTSuHsR8BxEtq/YQTpACeXpW3/sRdrz\nIMW7mkTt/ak26cMTGJfulhz+7ovlMrk9JtgD5azjrlDwJiCjwHGKb6teoOkNBHvh\nqXoXy/wBoS5ZfFMBhQDrbEiAxooUc3bjwNP1VYrr0U3CPBsmNew+OupiGe0DbiAt\nqoggChzcOba1VKsSmT5SSh8xcNYVqjtu9OA1I4mDn+TMsY/RkpjuxxuFChds4SoE\nan+pCq5RAgMBAAECggEABCooZAK5bxw4DxsV0PN3a239l5Dj4mxRopDKYldbjcHl\nog0UVvXA03sdgTZK0YcaovhETfEBVnfrBAiY6TaDCpVl4crQFzlbMG93KVUoBSJb\nPooRghX2RhXYA98TOeFnRFQUS60sRCLhfCpg0MrnPGw9Mklx/wS/LGk1V6sL/ECm\nph+jAWAAkbVMnyfwo/y7IQCr9QeQn1WNDObjE7N4+FYSaZj331spqSfzxZ62bfwI\nU2dn4UXsQdqBjCut+d9u1TNJlZAazXQeF09mm1K6bCzN+160UbnJE4rrPkkld5vd\nanyc5UCyHT8Do1Fy1ZQt4PIDASWPGcznF99aRXldOwKBgQDlAG/9dONWAM87KYx5\n53Wd8sSUY3QPt7/mewJwwGXQAEFDFjhlRK5TqgEKtJ9W11/wqKfEbSiOpeTtp8yR\njYxQGatj1IIuUmdN+mSIxWZ2dsS0HwTeWHYWxwwKdBOOLGhJmtfOFp24om5LZrTZ\nhGqPtjuLteMrLM2fcOREdjsG0wKBgQDQV+8H1KrFwyrkZswHw6gQYiA3HB8wDafO\nC62YZx9vE3WjeemPdjY0PFRxLVi/kky34t5zqcXCMKN/4vu0U6GIdEAHD1n5rXUG\n6o5315C6baIU/5kvJ18PMFhtJ5OwIw8/SuM7OLoxYabpqZ79ndNwPvHUp3XkDyF0\n8J3kWfGHywKBgQC5AmB34X5lFiRWRNwEBLZmVCLzS2IR7L7x4wF2vEnFAN+45nPL\nhPBeEWPkFUcB7uDI2kkoDZSNooNQaZeBJF1uvT5VWfOOnu5s9lVQlkKQhKWoa8MQ\nK2HERy14KI0/+KqMhLfC/UyRRVFcQ27qqOs6jdyPo/QTBpBdNuSEVwybFwKBgGnv\nPDfkF40ExotqBXYxMwRZkH3VC7qYRumKoJLsZFxLLbaYp3xto/P9dQYzA3ws/FtH\nvMpc2ZP6vTeqh0dSesDyMxgj4yED5IxGuXgQIKPaWN6KdC44u6nycBPYWszllrwc\n7NtQ5cN0HrWSrKfSFw9swfPZziTO2LkoG3Bfl2LvAoGAdEEaANQDRx+TulotuzFM\n1CVmNoW9Jz/CzZ6ZqTQAhgXcb5X2L851RRB0azxjdPnnFlNm7Hg/WRgn+9y5TTzb\n6T4Lw1K6Out78DquGyDkCICJWBlL2gCYX32Ie6xR0+qwLIxR9NIu9u0MpqeE3jE4\nMLBMDvPMHc9EkOan6o2E0tk=\n-----END PRIVATE KEY-----\n"
+            privateKey: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCe4WGR7m9mGdME\n9hTj12ijVP2vh6oPZ2fJHniJfHBFZ+mgXvG/98dIyz6uJ+v6qzRxGSlaRIZCZzke\ngj9DNZh/JjUw1G2HbHHwUu1xLlnbVGTMQ9z4Wy74hEQupODWmQsDmOJy8eENGM1w\nHSsYMI1ltm8q37ACsrYNHlC9Q91WY9x8Dx8SCh5WfrXP26qtrlDb4p5xuZIJ6mS3\nMA9rSW3o7H0WmJuiwTzmsjXOecQk7cYOtH+UB+3gfusMEabJaCFG0q6kY6zDzYeH\naY7vdCuu5GMchLcVl2j90dqbrVH3PH9gJPcsnx6E8RI5QhtSa9+Dg6QyCO4tDYfH\nVJqpHZRzAgMBAAECggEAEc5usf1IDOheBxNRWgu9VXjkCbUpsRpEvnykw7vnlU/F\nFk0tyPcLJbRprPkacHiZowdP5CcD6RNKionMb0rlcXKlyXg1YlUcG/QfWmz4cyVt\nOptse4U0qXOhdJzT+hki699JmdpT/7TE6YjLWKWwYzLkGKkDP/opfyTjpaKiftj7\nDfZfl07k+DDsEkt3icGo9RQFfhCCr9NuE7Yxo85JPA5weW+m8urWTpXmP6ze7rs9\n/tpeKjCykRLZnOo7nZ78BHsRL2MBqnL84Ik+uPwgbahKhXtuMzjwtwGLaG8aH9NE\n2pU90Nif0XYnxJyaI9xSwTlAHFAtGgY7BO0KDAowmQKBgQDTlWbFpTivAUoZwxUK\nDUFYzEAHLpzIzJ2D4RCkCvAzcqE5ZverSFWwhgF6pM/+wY7sTtKarHriCJEMO+k/\nFqDmg/HnabBKwBdacrUHZ0VugI0SCoeoVpGfrhqGVRbQaqybGOn6AAJHXq0WJxHB\n+pz6Vbdt8W0s25hhjCIePDKJ9wKBgQDAO6+Ch1MmhUW/l9K6PH5NHPMv/OHbdMiB\n7M2SIjUDlywfIQDOzdzic5Lm9Cid+4kRX2UVKEdqyvL4TKAkyNHWb63wPHi47HED\n3Zjqk/fmWcdLkkBn6fUX+lm7lSpEGsk8tQQdjNzyrkzdRL+kFoLbpRESMa5aP72J\n8SqBaCKKZQKBgBoa9uEv73x4NkJTdYcV95gTK1s3fxSvWkfpPvpedyCB5i6E683w\nUNJE1m3hY+BU1WOGnimDWm4FDJBr2+1yx0tpwDEDM0MlzDvWp0tQjJqDteQh9Hbq\np3ECNDeazAPPBZjlTAkSczWHEugGzgQW/cNNTCJ+hS/hsD1o4tTELKAlAoGAap8w\nQ9fHOPBmtVQCX6W58A+EmzNKGqz1oYq0or8yZGFu6X0ms43fXAL6kfsOpEGlzur4\nZ/nFUuhqR2pI0N5J9QRQl5US6I7MSHaaoFGeCDf3oGToMDrF5JzJNJARt2CcCX3l\nYHaG/lvK6ld9bAfIYQd3Jn5D1G7SNDZ9evVFYzkCgYEAweaZv2umK/maXVD0Qg/O\nmNpBS+/tXp/Y5LyaADoCFmkvc1yndzB7NdwjioDrsiRD41I6bkSOsW6YKvNINICq\nztuG8eWAiHzb0dlGAhK6nPbTPLG31aDe3Fp8UfQxTa/Hj3N77Wipphr9Sb1IV3WC\nunT/IAkerZ0k0EBvqHJ/bM0=\n-----END PRIVATE KEY-----\n"
           }),
           projectId: 'exercisemate'
         });
@@ -45,6 +59,13 @@ export async function sendPushNotification(
   data?: Record<string, string>
 ) {
   try {
+    console.log('Attempting to send FCM notification:', {
+      token: token.substring(0, 20) + '...',
+      title,
+      body,
+      data
+    });
+
     const message = {
       token,
       notification: {
@@ -67,11 +88,19 @@ export async function sendPushNotification(
       },
     };
 
+    console.log('FCM message payload:', JSON.stringify(message, null, 2));
+
     const response = await adminMessaging.send(message);
     console.log('Successfully sent message:', response);
     return response;
   } catch (error) {
     console.error('Error sending message:', error);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      code: (error as { code?: string })?.code || 'No code',
+      stack: error instanceof Error ? error.stack : 'No stack'
+    });
     throw error;
   }
 }
