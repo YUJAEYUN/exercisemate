@@ -55,7 +55,9 @@ export default function SettingsPage() {
       label: '도움말',
       description: '사용법 및 자주 묻는 질문',
       onClick: () => {
-        // TODO: 도움말 페이지 구현
+        // 기능 가이드 다시 보기
+        localStorage.removeItem('feature-guide-completed');
+        router.push('/dashboard');
       },
     },
   ];

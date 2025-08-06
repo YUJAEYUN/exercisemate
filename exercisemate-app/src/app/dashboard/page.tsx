@@ -27,6 +27,8 @@ import { getCurrentWeekCycle, getExerciseTypeLabel, getDaysUntilPenalty } from '
 import { ExerciseCelebration } from '@/components/ExerciseCelebration';
 import { DashboardSkeleton } from '@/components/ui/Skeleton';
 import { PWANotificationBanner } from '@/components/PWANotificationBanner';
+import { FeatureGuide } from '@/components/FeatureGuide';
+import { QuickActions } from '@/components/QuickActions';
 import { usePWANotifications } from '@/hooks/usePWANotifications';
 import { useClientNotifications } from '@/hooks/useClientNotifications';
 import { handleExerciseWithNotifications } from '@/lib/vercelNotifications';
@@ -43,6 +45,7 @@ export default function DashboardPage() {
   const [celebrationExerciseType, setCelebrationExerciseType] = useState<ExerciseType>('upper');
   const [exerciseLoading, setExerciseLoading] = useState(false);
   const [animatedProgress, setAnimatedProgress] = useState(0);
+  const [showFeatureGuide, setShowFeatureGuide] = useState(false);
 
   // 진행률 애니메이션 효과
   useEffect(() => {
@@ -62,6 +65,17 @@ export default function DashboardPage() {
 
   // 클라이언트 알림 훅 사용 (무료)
   const { handleExerciseComplete } = useClientNotifications();
+
+  // 기능 가이드 초기화
+  useEffect(() => {
+    const hasSeenGuide = localStorage.getItem('feature-guide-completed');
+    if (!hasSeenGuide && user && !loading) {
+      // 첫 방문 사용자에게 가이드 표시
+      setTimeout(() => {
+        setShowFeatureGuide(true);
+      }, 1000); // 1초 후 표시
+    }
+  }, [user, loading]);
 
   const loadDashboardData = useCallback(async () => {
     if (!user?.groupId) return;
@@ -439,6 +453,9 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* 빠른 액션 */}
+        <QuickActions />
       </div>
 
       {/* 운동 축하 애니메이션 */}
@@ -447,6 +464,12 @@ export default function DashboardPage() {
         exerciseType={celebrationExerciseType}
         character={user?.character || 'cat'}
         onComplete={handleCelebrationComplete}
+      />
+
+      {/* 기능 가이드 */}
+      <FeatureGuide
+        isOpen={showFeatureGuide}
+        onClose={() => setShowFeatureGuide(false)}
       />
     </div>
   );
