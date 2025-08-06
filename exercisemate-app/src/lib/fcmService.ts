@@ -104,7 +104,7 @@ export async function sendNotificationToUser(
 }
 
 /**
- * 여러 사용자에게 FCM 알림 전송
+ * 여러 사용자에게 FCM 알림 전송 (Firebase Functions 사용)
  */
 export async function sendNotificationToUsers(
   targetUserIds: string[],
@@ -117,30 +117,45 @@ export async function sendNotificationToUsers(
   successCount: number;
   failureCount: number;
 }> {
-  console.log('📤 Sending notifications to multiple users:', targetUserIds);
+  try {
+    console.log('📤 Sending notifications to multiple users via Firebase Functions:', targetUserIds);
 
-  const results = await Promise.all(
-    targetUserIds.map(async (userId) => {
-      const result = await sendNotificationToUser(userId, title, body, data);
-      return {
+    // 각 사용자에게 개별적으로 알림 전송
+    const results = await Promise.all(
+      targetUserIds.map(async (userId) => {
+        const result = await sendNotificationToUser(userId, title, body, data);
+        return {
+          userId,
+          success: result.success,
+          error: result.error
+        };
+      })
+    );
+
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.length - successCount;
+
+    console.log(`📊 Notification results: ${successCount} success, ${failureCount} failed`);
+
+    return {
+      success: successCount > 0,
+      results,
+      successCount,
+      failureCount
+    };
+  } catch (error) {
+    console.error('❌ Error sending notifications to multiple users:', error);
+    return {
+      success: false,
+      results: targetUserIds.map(userId => ({
         userId,
-        success: result.success,
-        error: result.error
-      };
-    })
-  );
-
-  const successCount = results.filter(r => r.success).length;
-  const failureCount = results.length - successCount;
-
-  console.log(`📊 Notification results: ${successCount} success, ${failureCount} failed`);
-
-  return {
-    success: successCount > 0,
-    results,
-    successCount,
-    failureCount
-  };
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })),
+      successCount: 0,
+      failureCount: targetUserIds.length
+    };
+  }
 }
 
 /**

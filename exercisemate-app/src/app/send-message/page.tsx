@@ -125,17 +125,6 @@ export default function SendMessagePage() {
     setIsLoading(true);
 
     try {
-      // Firebase Auth 토큰 가져오기
-      const { auth } = await import('@/lib/firebase');
-      const currentUser = auth.currentUser;
-      
-      if (!currentUser) {
-        toast.error('인증되지 않은 사용자입니다.');
-        return;
-      }
-      
-      const idToken = await currentUser.getIdToken();
-
       // 그룹 멤버들에게 메시지 전송 (자신 제외)
       const targetUserIds = group.members.filter(memberId => memberId !== user.uid);
 
@@ -148,35 +137,33 @@ export default function SendMessagePage() {
         return;
       }
 
-      const response = await fetch('/api/send-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          targetUserIds,
-          title: `💬 ${user.displayName || '그룹 멤버'}님의 메시지`,
-          body: messageToSend,
+      // Firebase Functions를 사용하여 알림 전송
+      const { sendNotificationToUsers } = await import('@/lib/fcmService');
+
+      const result = await sendNotificationToUsers(
+        targetUserIds,
+        `💬 ${user.displayName || '그룹 멤버'}님의 메시지`,
+        messageToSend,
+        {
           type: 'group_message',
-          url: '/dashboard',
-          data: {
-            senderId: user.uid,
-            senderName: user.displayName || '그룹 멤버',
-            groupId: group.id,
-            timestamp: new Date().toISOString()
-          }
-        })
-      });
+          senderId: user.uid,
+          senderName: user.displayName || '그룹 멤버',
+          groupId: group.id,
+          timestamp: new Date().toISOString(),
+          url: '/dashboard'
+        }
+      );
 
-      const result = await response.json();
-
-      if (response.ok) {
-        toast.success(`${result.notificationsSent}명에게 메시지를 전송했습니다! 🎉`);
+      if (result.success) {
+        toast.success(`${result.successCount}명에게 메시지를 전송했습니다! 🎉`);
         setCustomMessage('');
         setSelectedTemplate('');
+
+        if (result.failureCount > 0) {
+          console.warn(`${result.failureCount}명에게 전송 실패`);
+        }
       } else {
-        toast.error(`메시지 전송 실패: ${result.error}`);
+        toast.error('메시지 전송에 실패했습니다.');
       }
 
     } catch (error) {
