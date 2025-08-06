@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { MessageCircle, Bell, Users, Settings, HelpCircle } from 'lucide-react';
-import { Button } from './ui/Button';
 
 interface QuickAction {
   icon: React.ComponentType<{ className?: string }>;

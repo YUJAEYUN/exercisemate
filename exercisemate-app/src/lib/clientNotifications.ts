@@ -318,8 +318,6 @@ export async function initializeClientNotifications(
       // 실제로는 서버에서 cron job이나 스케줄러를 사용해야 함
       // 현재는 테스트용으로 간단한 리마인더만 설정
 
-      const { sendPersonalReminder } = await import('./fcmService');
-
       // 테스트용 즉시 알림 (실제로는 스케줄링 필요)
       if (settings.reminderTime) {
         console.log(`⏰ Reminder scheduled for ${settings.reminderTime}`);

@@ -238,7 +238,7 @@ export function isNotificationSupported(): boolean {
 /**
  * Firebase Functions를 통한 서버 푸시 알림 전송 테스트
  */
-export async function testServerNotification(userId: string, idToken?: string) {
+export async function testServerNotification(userId: string, _idToken?: string) {
   try {
     // Firebase Functions를 사용하여 알림 전송
     const { sendTestNotification } = await import('@/lib/fcmService');

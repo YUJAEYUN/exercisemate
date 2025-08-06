@@ -31,7 +31,7 @@ export function useClientNotifications() {
     const hasPermission = getNotificationPermissionStatus() === 'granted';
     
     if (hasPermission && user.notificationSettings.enabled) {
-      initializeClientNotifications(user.notificationSettings);
+      initializeClientNotifications(user.uid, user.notificationSettings);
     }
   }, [user]);
 
@@ -44,12 +44,12 @@ export function useClientNotifications() {
     }
   };
 
-  // 운동 기록 시 알림 처리
-  const handleExerciseComplete = (exerciseCount: number, goal: number) => {
+  // 운동 기록 시 알림 처리 (서버 푸시 알림 사용)
+  const handleExerciseComplete = async (exerciseCount: number, goal: number) => {
     const hasPermission = getNotificationPermissionStatus() === 'granted';
-    
-    if (hasPermission && user?.notificationSettings?.enabled) {
-      handleExerciseLogged(exerciseCount, goal);
+
+    if (hasPermission && user?.notificationSettings?.enabled && user?.uid) {
+      await handleExerciseLogged(user.uid, exerciseCount, goal);
     }
   };
 
