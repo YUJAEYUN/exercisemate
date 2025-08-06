@@ -6,6 +6,7 @@ import { LoadingProvider } from "@/contexts/LoadingContext";
 import { Toaster } from "react-hot-toast";
 import { PWAProvider } from "@/components/PWAProvider";
 import { FirebaseMessagingProvider } from "@/components/FirebaseMessagingProvider";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { BottomNavigation } from "@/components/BottomNavigation";
 
 const geistSans = Geist({
@@ -56,6 +57,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ServiceWorkerRegistration />
         <PWAProvider>
           <LoadingProvider>
             <AuthProvider>

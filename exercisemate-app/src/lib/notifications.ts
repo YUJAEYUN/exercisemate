@@ -154,10 +154,21 @@ export async function updateNotificationSettings(
  */
 export async function showTestNotification() {
   try {
-    if ('serviceWorker' in navigator && 'Notification' in window) {
-      const permission = await Notification.requestPermission();
+    if (!('Notification' in window)) {
+      console.log('Notifications not supported');
+      return;
+    }
 
-      if (permission === 'granted') {
+    const permission = await Notification.requestPermission();
+
+    if (permission !== 'granted') {
+      console.log('Notification permission denied');
+      return;
+    }
+
+    // Service Worker를 사용할 수 있는 경우
+    if ('serviceWorker' in navigator) {
+      try {
         const registration = await navigator.serviceWorker.ready;
 
         await registration.showNotification('🏃‍♂️ 오운완 챌린지', {
@@ -165,20 +176,28 @@ export async function showTestNotification() {
           icon: '/icons/icon-192x192.png',
           badge: '/icons/icon-72x72.png',
           tag: 'test-notification',
-          requireInteraction: true,
           data: {
             url: '/dashboard',
             type: 'test'
           }
         });
 
-        console.log('Test notification sent successfully');
-      } else {
-        console.log('Notification permission denied');
+        console.log('Test notification sent via Service Worker');
+        return;
+      } catch (swError) {
+        console.warn('Service Worker notification failed, falling back to browser notification:', swError);
       }
-    } else {
-      console.log('Service Worker or Notifications not supported');
     }
+
+    // Service Worker가 없거나 실패한 경우 브라우저 알림 사용
+    new Notification('🏃‍♂️ 오운완 챌린지', {
+      body: '테스트 알림입니다! 💪',
+      icon: '/icons/icon-192x192.png',
+      tag: 'test-notification'
+    });
+
+    console.log('Test notification sent via browser API');
+
   } catch (error) {
     console.error('Error sending test notification:', error);
   }
