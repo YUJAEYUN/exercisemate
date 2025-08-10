@@ -534,13 +534,23 @@ export const sendPersonalReminder = onCall(async (request) => {
   }
 });
 
-// 매일 저녁 8시에 운동 리마인더 전송 (한국 시간 기준)
+// 매시간 운동 리마인더 전송 (사용자별 개별 시간에 맞춰)
 export const dailyExerciseReminder = onSchedule({
-  schedule: "0 20 * * *", // 매일 20:00 (UTC)
+  schedule: "0 * * * *", // 매시간 정각에 실행
   timeZone: "Asia/Seoul",
 }, async (_event) => {
   try {
-    logger.info("Daily exercise reminder started");
+    // 한국 시간으로 현재 시간 계산
+    const now = new Date();
+    const koreaTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Seoul"}));
+    const currentHour = koreaTime.getHours();
+    const currentDay = koreaTime.getDay(); // 0=일요일, 1=월요일, ..., 6=토요일
+
+    logger.info("Daily exercise reminder started", {
+      currentHour,
+      currentDay,
+      koreaTime: koreaTime.toISOString()
+    });
 
     // 알림 설정이 활성화된 모든 사용자 조회
     const usersSnapshot = await admin.firestore()
@@ -552,6 +562,8 @@ export const dailyExerciseReminder = onSchedule({
       logger.info("No users with notifications enabled");
       return;
     }
+
+    logger.info(`Found ${usersSnapshot.size} users with notifications enabled`);
 
     const reminderPromises: Promise<any>[] = [];
 
@@ -578,11 +590,20 @@ export const dailyExerciseReminder = onSchedule({
 
       if (fcmTokens.length > 0) {
         const reminderTime = userData.notificationSettings?.reminderTime || "20:00";
-        const currentHour = new Date().getHours();
+        const reminderDays = userData.notificationSettings?.reminderDays || [1, 2, 3, 4, 5];
         const reminderHour = parseInt(reminderTime.split(":")[0]);
 
-        // 설정된 시간과 현재 시간이 일치하는 경우에만 알림 전송
-        if (currentHour === reminderHour) {
+        logger.info(`User ${userId} reminder check`, {
+          reminderTime,
+          reminderDays,
+          currentHour,
+          currentDay,
+          reminderHour,
+          shouldSend: reminderDays.includes(currentDay) && currentHour === reminderHour
+        });
+
+        // 설정된 요일과 시간이 모두 일치하는 경우에만 알림 전송
+        if (reminderDays.includes(currentDay) && currentHour === reminderHour) {
           const messages = fcmTokens.map(token => ({
             token,
             notification: {
