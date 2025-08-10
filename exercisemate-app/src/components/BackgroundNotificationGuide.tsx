@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { 
-  Smartphone, 
-  Bell, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Smartphone,
+  Bell,
+  AlertCircle,
+  CheckCircle,
   X,
-  Download,
-  Settings
+  Download
 } from 'lucide-react';
 import { usePWANotifications } from '@/hooks/usePWANotifications';
 import { usePWAInstallPrompt } from '@/hooks/usePWAInstallPrompt';
@@ -166,7 +165,7 @@ export function BackgroundNotificationGuide({ onClose }: BackgroundNotificationG
       <div className="space-y-3">
         {recommendations.map((rec, index) => {
           const Icon = rec.icon;
-          const priorityColors = {
+          const priorityColors: Record<string, string> = {
             high: 'bg-red-100 text-red-700 border-red-200',
             medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
             low: 'bg-gray-100 text-gray-700 border-gray-200'
