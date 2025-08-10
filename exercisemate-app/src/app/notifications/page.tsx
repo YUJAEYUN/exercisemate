@@ -311,12 +311,25 @@ export default function NotificationsPage() {
             </div>
 
             <div className="space-y-3">
-              <input
-                type="time"
+              <select
                 value={settings.reminderTime}
                 onChange={(e) => handleTimeChange(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-              />
+              >
+                {Array.from({ length: 24 }, (_, i) => {
+                  const hour = i.toString().padStart(2, '0');
+                  const timeValue = `${hour}:00`;
+                  const displayTime = i === 0 ? '오전 12:00 (자정)' :
+                                    i < 12 ? `오전 ${i}:00` :
+                                    i === 12 ? '오후 12:00 (정오)' :
+                                    `오후 ${i - 12}:00`;
+                  return (
+                    <option key={timeValue} value={timeValue}>
+                      {displayTime}
+                    </option>
+                  );
+                })}
+              </select>
 
               <Button
                 onClick={handleSendTestNotification}

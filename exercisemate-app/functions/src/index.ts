@@ -670,7 +670,7 @@ export const dailyExerciseReminder = onSchedule({
 
     const reminderPromises: Promise<any>[] = [];
 
-    usersSnapshot.forEach((userDoc) => {
+    for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data();
       const userId = userDoc.id;
 
@@ -759,7 +759,7 @@ export const dailyExerciseReminder = onSchedule({
           }
         }
       }
-    });
+    }
 
     const results = await Promise.all(reminderPromises);
     const successCount = results.filter(r => r.success).length;
