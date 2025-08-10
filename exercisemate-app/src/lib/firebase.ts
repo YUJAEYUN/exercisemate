@@ -25,7 +25,27 @@ export const functions = getFunctions(app);
 // Initialize Firebase Cloud Messaging (FCM) only if supported
 export const messaging = async () => {
   const supported = await isSupported();
-  return supported ? getMessaging(app) : null;
+  if (!supported) return null;
+
+  // Service Worker 등록 확인
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+      if (registration) {
+        // 기존 등록된 Service Worker 사용
+        return getMessaging(app);
+      } else {
+        // Service Worker가 등록되지 않은 경우 등록
+        await navigator.serviceWorker.register('/sw.js');
+        return getMessaging(app);
+      }
+    } catch (error) {
+      console.error('Service Worker registration error:', error);
+      return getMessaging(app);
+    }
+  }
+
+  return getMessaging(app);
 };
 
 export default app;

@@ -24,6 +24,7 @@ import {
 } from '@/lib/notifications';
 import { useClientNotifications } from '@/hooks/useClientNotifications';
 import { NotificationStatus } from '@/components/NotificationPermissionRequest';
+import { BackgroundNotificationGuide } from '@/components/BackgroundNotificationGuide';
 import { toast } from 'react-hot-toast';
 
 const DAYS_OF_WEEK = [
@@ -114,6 +115,30 @@ export default function NotificationsPage() {
     } catch (error) {
       console.error('Error updating reminder time:', error);
       toast.error('시간 변경 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 현재 시간으로 알림 시간 설정 (테스트용)
+  const handleSetCurrentTime = async () => {
+    if (!user) return;
+
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    const newSettings = {
+      ...settings,
+      reminderTime: currentTime,
+      reminderDays: [0, 1, 2, 3, 4, 5, 6] // 모든 요일 활성화
+    };
+    setSettings(newSettings);
+
+    try {
+      await updateNotificationSettings(user.uid, newSettings);
+      updateNotificationSchedule(newSettings);
+      toast.success(`알림 시간이 현재 시간(${currentTime})으로 설정되었습니다. 1분 후 알림이 올 예정입니다!`);
+    } catch (error) {
+      console.error('Error setting current time:', error);
+      toast.error('시간 설정 중 오류가 발생했습니다.');
     }
   };
 
@@ -245,6 +270,9 @@ export default function NotificationsPage() {
       </header>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+        {/* 백그라운드 알림 가이드 */}
+        <BackgroundNotificationGuide />
+
         {/* 알림 상태 */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -281,12 +309,22 @@ export default function NotificationsPage() {
               <h3 className="font-semibold text-gray-900">알림 시간</h3>
             </div>
 
-            <input
-              type="time"
-              value={settings.reminderTime}
-              onChange={(e) => handleTimeChange(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="space-y-3">
+              <input
+                type="time"
+                value={settings.reminderTime}
+                onChange={(e) => handleTimeChange(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+
+              <Button
+                onClick={handleSetCurrentTime}
+                variant="outline"
+                className="w-full text-sm"
+              >
+                🕐 현재 시간으로 설정 (테스트용)
+              </Button>
+            </div>
           </div>
         )}
 

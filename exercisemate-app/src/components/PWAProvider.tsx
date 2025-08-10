@@ -9,17 +9,13 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsClient(true);
 
-    // Service Worker 등록
+    // Service Worker 등록 (Firebase 메시징 통합)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
-          // 메인 서비스 워커 등록
+          // 통합된 서비스 워커 등록 (Firebase 메시징 포함)
           const registration = await navigator.serviceWorker.register('/sw.js');
-          console.log('SW registered: ', registration);
-
-          // Firebase 메시징 서비스 워커 등록
-          const messagingRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-          console.log('Firebase Messaging SW registered: ', messagingRegistration);
+          console.log('SW registered with Firebase Messaging: ', registration);
 
           // 업데이트 확인
           registration.addEventListener('updatefound', () => {
