@@ -265,7 +265,7 @@ export default function SendMessagePage() {
             value={customMessage}
             onChange={(e) => setCustomMessage(e.target.value)}
             placeholder="그룹 멤버들에게 보낼 메시지를 입력하세요..."
-            className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             maxLength={200}
           />
           <div className="flex justify-between items-center mt-2">

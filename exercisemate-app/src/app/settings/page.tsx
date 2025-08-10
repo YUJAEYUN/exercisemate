@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { PWAStatus } from '@/components/PWANotificationBanner';
-import { ThemeSelector } from '@/components/ThemeSelector';
+
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -64,13 +64,13 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center space-x-3">
-            <SettingsIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">설정</h1>
+            <SettingsIcon className="w-6 h-6 text-blue-600" />
+            <h1 className="text-xl font-semibold text-gray-900">설정</h1>
           </div>
         </div>
       </header>
@@ -100,36 +100,31 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 테마 설정 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-          <ThemeSelector />
-        </div>
-
         {/* 설정 메뉴 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {settingsItems.map((item, index) => {
             const Icon = item.icon;
             return (
               <button
                 key={index}
                 onClick={item.onClick}
-                className="w-full px-6 py-4 flex items-center space-x-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                className="w-full px-6 py-4 flex items-center space-x-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
               >
-                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-gray-600" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{item.label}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{item.description}</p>
+                  <p className="font-medium text-gray-900">{item.label}</p>
+                  <p className="text-sm text-gray-600">{item.description}</p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
             );
           })}
         </div>
 
         {/* 로그아웃 버튼 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-6 shadow-sm">
           <Button
             onClick={handleSignOut}
             variant="danger"
@@ -141,13 +136,13 @@ export default function SettingsPage() {
         </div>
 
         {/* PWA 상태 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">앱 상태</h3>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="font-semibold text-gray-900 mb-4">앱 상태</h3>
           <PWAStatus />
         </div>
 
         {/* 앱 정보 */}
-        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="text-center text-sm text-gray-500">
           <p>오운완 챌린지 v1.0.0</p>
           <p className="mt-1">친구와 함께하는 운동 습관 형성</p>
         </div>
