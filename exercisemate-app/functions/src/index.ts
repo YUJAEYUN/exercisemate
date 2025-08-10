@@ -122,8 +122,29 @@ export const sendToUser = onCall(async (request) => {
     }
 
     const userData = userDoc.data();
-    if (!userData?.fcmToken) {
-      throw new Error("대상 사용자의 FCM 토큰이 없습니다.");
+
+    // 기기별 토큰 우선 사용, 없으면 기존 토큰 사용
+    let fcmTokens: string[] = [];
+
+    if (userData?.fcmTokens && Array.isArray(userData.fcmTokens)) {
+      // 새로운 기기별 토큰 시스템
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      fcmTokens = userData.fcmTokens
+        .filter((tokenInfo: any) => {
+          // 최근 30일 내에 사용된 토큰만 사용
+          const lastUsed = tokenInfo.lastUsed?.toDate();
+          return lastUsed && lastUsed >= thirtyDaysAgo;
+        })
+        .map((tokenInfo: any) => tokenInfo.token);
+    } else if (userData?.fcmToken) {
+      // 기존 단일 토큰 시스템 (하위 호환성)
+      fcmTokens = [userData.fcmToken];
+    }
+
+    if (fcmTokens.length === 0) {
+      throw new Error("대상 사용자의 활성 FCM 토큰이 없습니다.");
     }
 
     // FCM 메시지 구성
@@ -135,8 +156,9 @@ export const sendToUser = onCall(async (request) => {
       ),
     };
 
-    const message = {
-      token: userData.fcmToken,
+    // 여러 기기에 알림 전송
+    const messages = fcmTokens.map(token => ({
+      token,
       notification: {
         title,
         body,
@@ -147,22 +169,49 @@ export const sendToUser = onCall(async (request) => {
           link: url,
         },
       },
-    };
+    }));
 
-    // FCM 전송
-    const response = await admin.messaging().send(message);
+    // 멀티캐스트 전송 또는 개별 전송
+    let successCount = 0;
+    let failureCount = 0;
 
-    logger.info("사용자 알림 전송 성공", {
-      messageId: response,
+    if (messages.length === 1) {
+      // 단일 토큰인 경우
+      try {
+        const response = await admin.messaging().send(messages[0]);
+        successCount = 1;
+        logger.info(`Single notification sent: ${response}`);
+      } catch (error) {
+        failureCount = 1;
+        logger.error("Single notification failed:", error);
+      }
+    } else {
+      // 여러 토큰인 경우 멀티캐스트 사용
+      try {
+        const response = await admin.messaging().sendEach(messages);
+        successCount = response.successCount;
+        failureCount = response.failureCount;
+        logger.info(`Multicast notification sent: ${successCount} success, ${failureCount} failed`);
+      } catch (error) {
+        failureCount = messages.length;
+        logger.error("Multicast notification failed:", error);
+      }
+    }
+
+    logger.info("사용자 알림 전송 완료", {
       targetUserId,
       title,
       body,
+      tokensUsed: fcmTokens.length,
+      successCount,
+      failureCount,
     });
 
     return {
-      success: true,
-      messageId: response,
-      message: "알림이 성공적으로 전송되었습니다.",
+      success: successCount > 0,
+      message: `알림 전송 완료: ${successCount}개 성공, ${failureCount}개 실패`,
+      successCount,
+      failureCount,
     };
   } catch (error) {
     logger.error("사용자 알림 전송 실패", error);
@@ -394,13 +443,31 @@ export const sendPersonalReminder = onCall(async (request) => {
     }
 
     const userData = userDoc.data();
-    if (!userData?.fcmToken) {
-      throw new Error("사용자의 FCM 토큰이 없습니다.");
+
+    // 기기별 토큰 우선 사용, 없으면 기존 토큰 사용
+    let fcmTokens: string[] = [];
+
+    if (userData?.fcmTokens && Array.isArray(userData.fcmTokens)) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      fcmTokens = userData.fcmTokens
+        .filter((tokenInfo: any) => {
+          const lastUsed = tokenInfo.lastUsed?.toDate();
+          return lastUsed && lastUsed >= thirtyDaysAgo;
+        })
+        .map((tokenInfo: any) => tokenInfo.token);
+    } else if (userData?.fcmToken) {
+      fcmTokens = [userData.fcmToken];
     }
 
-    // FCM 메시지 구성
-    const message = {
-      token: userData.fcmToken,
+    if (fcmTokens.length === 0) {
+      throw new Error("사용자의 활성 FCM 토큰이 없습니다.");
+    }
+
+    // 여러 기기에 알림 전송
+    const messages = fcmTokens.map(token => ({
+      token,
       notification: {
         title,
         body,
@@ -415,22 +482,47 @@ export const sendPersonalReminder = onCall(async (request) => {
           link: "/dashboard",
         },
       },
-    };
+    }));
 
-    // FCM 전송
-    const response = await admin.messaging().send(message);
+    // 멀티캐스트 전송
+    let successCount = 0;
+    let failureCount = 0;
 
-    logger.info("개인 리마인더 알림 전송 성공", {
-      messageId: response,
+    if (messages.length === 1) {
+      try {
+        const response = await admin.messaging().send(messages[0]);
+        successCount = 1;
+        logger.info(`Personal reminder sent: ${response}`);
+      } catch (error) {
+        failureCount = 1;
+        logger.error("Personal reminder failed:", error);
+      }
+    } else {
+      try {
+        const response = await admin.messaging().sendEach(messages);
+        successCount = response.successCount;
+        failureCount = response.failureCount;
+        logger.info(`Personal reminder multicast: ${successCount} success, ${failureCount} failed`);
+      } catch (error) {
+        failureCount = messages.length;
+        logger.error("Personal reminder multicast failed:", error);
+      }
+    }
+
+    logger.info("개인 리마인더 알림 전송 완료", {
       userId,
       title,
       body,
+      tokensUsed: fcmTokens.length,
+      successCount,
+      failureCount,
     });
 
     return {
-      success: true,
-      messageId: response,
-      message: "개인 리마인더 알림이 성공적으로 전송되었습니다.",
+      success: successCount > 0,
+      message: `개인 리마인더 전송 완료: ${successCount}개 성공, ${failureCount}개 실패`,
+      successCount,
+      failureCount,
     };
   } catch (error) {
     logger.error("개인 리마인더 알림 전송 실패", error);
@@ -467,16 +559,32 @@ export const dailyExerciseReminder = onSchedule({
       const userData = userDoc.data();
       const userId = userDoc.id;
 
-      // FCM 토큰이 있는 사용자만 처리
-      if (userData.fcmToken) {
+      // 활성 FCM 토큰이 있는 사용자만 처리
+      let fcmTokens: string[] = [];
+
+      if (userData?.fcmTokens && Array.isArray(userData.fcmTokens)) {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        fcmTokens = userData.fcmTokens
+          .filter((tokenInfo: any) => {
+            const lastUsed = tokenInfo.lastUsed?.toDate();
+            return lastUsed && lastUsed >= thirtyDaysAgo;
+          })
+          .map((tokenInfo: any) => tokenInfo.token);
+      } else if (userData?.fcmToken) {
+        fcmTokens = [userData.fcmToken];
+      }
+
+      if (fcmTokens.length > 0) {
         const reminderTime = userData.notificationSettings?.reminderTime || "20:00";
         const currentHour = new Date().getHours();
         const reminderHour = parseInt(reminderTime.split(":")[0]);
 
         // 설정된 시간과 현재 시간이 일치하는 경우에만 알림 전송
         if (currentHour === reminderHour) {
-          const message = {
-            token: userData.fcmToken,
+          const messages = fcmTokens.map(token => ({
+            token,
             notification: {
               title: "🏃‍♂️ 운동할 시간이에요!",
               body: "오늘도 목표를 향해 달려봐요! 💪",
@@ -491,19 +599,34 @@ export const dailyExerciseReminder = onSchedule({
                 link: "/dashboard",
               },
             },
-          };
+          }));
 
-          reminderPromises.push(
-            admin.messaging().send(message)
-              .then((response) => {
-                logger.info(`Daily reminder sent to user ${userId}`, {messageId: response});
-                return {userId, success: true, messageId: response};
-              })
-              .catch((error) => {
-                logger.error(`Failed to send daily reminder to user ${userId}`, error);
-                return {userId, success: false, error: error.message};
-              })
-          );
+          // 멀티캐스트 전송
+          if (messages.length === 1) {
+            reminderPromises.push(
+              admin.messaging().send(messages[0])
+                .then((response) => {
+                  logger.info(`Daily reminder sent to user ${userId}`, {messageId: response});
+                  return {userId, success: true, messageId: response};
+                })
+                .catch((error) => {
+                  logger.error(`Failed to send daily reminder to user ${userId}`, error);
+                  return {userId, success: false, error: error.message};
+                })
+            );
+          } else {
+            reminderPromises.push(
+              admin.messaging().sendEach(messages)
+                .then((response) => {
+                  logger.info(`Daily reminder multicast to user ${userId}: ${response.successCount} success, ${response.failureCount} failed`);
+                  return {userId, success: response.successCount > 0, successCount: response.successCount, failureCount: response.failureCount};
+                })
+                .catch((error) => {
+                  logger.error(`Failed to send daily reminder multicast to user ${userId}`, error);
+                  return {userId, success: false, error: error.message};
+                })
+            );
+          }
         }
       }
     });

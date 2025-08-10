@@ -2,6 +2,7 @@ import { getToken, onMessage } from 'firebase/messaging';
 import { messaging } from './firebase';
 import { updateUser, getUser } from './firestore';
 import { toast } from 'react-hot-toast';
+import { addFCMToken, cleanupExpiredTokens, updateTokenLastUsed } from './fcmTokenManager';
 
 // VAPID 키 (Firebase 콘솔에서 생성해야 함)
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
@@ -85,26 +86,34 @@ export async function generateAndSaveFCMToken(userId: string): Promise<string | 
       console.log('🔧 Token length:', token.length);
       console.log('🔧 Token preview:', token.substring(0, 50) + '...');
 
-      // 현재 사용자 데이터 확인하여 토큰이 다른 경우에만 업데이트
+      // 기기별 토큰 저장 (새로운 방식)
       try {
-        const currentUser = await getUser(userId);
-        if (currentUser?.fcmToken !== token) {
-          console.log('FCM token changed, updating user data');
-          // Firestore에 토큰 저장
+        console.log('🔧 Saving FCM token with device info...');
+        const result = await addFCMToken(userId, token);
+
+        if (result.success) {
+          // 만료된 토큰 정리
+          await cleanupExpiredTokens(userId);
+          console.log('✅ FCM token saved with device info');
+        } else {
+          console.error('❌ Failed to save FCM token:', result.error);
+
+          // 실패 시 기존 방식으로 폴백
           await updateUser(userId, {
             fcmToken: token,
             notificationSettings: DEFAULT_NOTIFICATION_SETTINGS
           });
-        } else {
-          console.log('FCM token unchanged, skipping update');
+          console.log('📝 Fallback: FCM token saved using legacy method');
         }
       } catch (error) {
-        console.error('Error checking current user data:', error);
-        // 에러 발생 시에도 토큰 업데이트 시도
+        console.error('❌ Error saving FCM token:', error);
+
+        // 에러 발생 시 기존 방식으로 폴백
         await updateUser(userId, {
           fcmToken: token,
           notificationSettings: DEFAULT_NOTIFICATION_SETTINGS
         });
+        console.log('📝 Fallback: FCM token saved using legacy method');
       }
 
       return token;

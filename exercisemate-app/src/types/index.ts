@@ -1,5 +1,15 @@
 import { Timestamp } from 'firebase/firestore';
 
+// FCM 토큰 정보 (기기별 관리)
+export interface FCMTokenInfo {
+  token: string;
+  deviceId: string; // 기기 고유 ID
+  deviceType: 'web' | 'android' | 'ios';
+  userAgent?: string; // 브라우저/앱 정보
+  lastUsed: Timestamp;
+  createdAt: Timestamp;
+}
+
 // 사용자 타입
 export interface User {
   uid: string;
@@ -8,7 +18,8 @@ export interface User {
   photoURL?: string;
   character?: 'cat' | 'dog'; // 캐릭터는 선택 후에 설정되므로 optional
   groupId?: string;
-  fcmToken?: string;
+  fcmToken?: string; // 하위 호환성을 위해 유지 (deprecated)
+  fcmTokens?: FCMTokenInfo[]; // 새로운 기기별 토큰 배열
   notificationSettings?: NotificationSettings;
   createdAt: Timestamp;
   updatedAt: Timestamp;
