@@ -118,27 +118,28 @@ export default function NotificationsPage() {
     }
   };
 
-  // 현재 시간으로 알림 시간 설정 (테스트용)
-  const handleSetCurrentTime = async () => {
+  // 즉시 테스트 알림 전송
+  const handleSendTestNotification = async () => {
     if (!user) return;
 
-    const now = new Date();
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-    const newSettings = {
-      ...settings,
-      reminderTime: currentTime,
-      reminderDays: [0, 1, 2, 3, 4, 5, 6] // 모든 요일 활성화
-    };
-    setSettings(newSettings);
-
     try {
-      await updateNotificationSettings(user.uid, newSettings);
-      updateNotificationSchedule(newSettings);
-      toast.success(`알림 시간이 현재 시간(${currentTime})으로 설정되었습니다. 1분 후 알림이 올 예정입니다!`);
+      toast.loading('테스트 알림을 전송하고 있습니다...');
+
+      // Firebase Functions의 sendTestNotification 호출
+      const { sendTestNotification } = await import('@/lib/firebase-functions');
+
+      const result = await sendTestNotification(user.uid);
+
+      if (result.success) {
+        toast.dismiss();
+        toast.success('테스트 알림이 전송되었습니다! 곧 알림을 받으실 수 있습니다. 🎉');
+      } else {
+        throw new Error('Failed to send test notification');
+      }
     } catch (error) {
-      console.error('Error setting current time:', error);
-      toast.error('시간 설정 중 오류가 발생했습니다.');
+      toast.dismiss();
+      console.error('Error sending test notification:', error);
+      toast.error('테스트 알림 전송 중 오류가 발생했습니다.');
     }
   };
 
@@ -318,11 +319,11 @@ export default function NotificationsPage() {
               />
 
               <Button
-                onClick={handleSetCurrentTime}
+                onClick={handleSendTestNotification}
                 variant="outline"
                 className="w-full text-sm"
               >
-                🕐 현재 시간으로 설정 (테스트용)
+                🔔 지금 즉시 테스트 알림 보내기
               </Button>
             </div>
           </div>

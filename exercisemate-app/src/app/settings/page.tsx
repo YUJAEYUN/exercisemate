@@ -10,8 +10,7 @@ import {
   Shield,
   HelpCircle,
   ChevronRight,
-  Settings as SettingsIcon,
-  Palette
+  Settings as SettingsIcon
 } from 'lucide-react';
 import Image from 'next/image';
 import { PWAStatus } from '@/components/PWANotificationBanner';

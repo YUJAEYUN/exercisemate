@@ -5,6 +5,7 @@
 
 import {onCall} from "firebase-functions/v2/https";
 import {onSchedule} from "firebase-functions/v2/scheduler";
+import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 
@@ -546,6 +547,93 @@ export const sendPersonalReminder = onCall(async (request) => {
       success: false,
       error: error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.",
     };
+  }
+});
+
+// 즉시 테스트 알림 전송
+export const sendTestNotification = onCall(async (request) => {
+  try {
+    const { userId } = request.data;
+
+    if (!userId) {
+      throw new functions.https.HttpsError('invalid-argument', 'userId is required');
+    }
+
+    logger.info(`Sending test notification to user: ${userId}`);
+
+    // 사용자 정보 조회
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'User not found');
+    }
+
+    const userData = userDoc.data();
+
+    // FCM 토큰 가져오기
+    let fcmTokens: string[] = [];
+
+    if (userData?.fcmTokens && Array.isArray(userData.fcmTokens)) {
+      fcmTokens = userData.fcmTokens
+        .filter((tokenInfo: any) => tokenInfo.token)
+        .map((tokenInfo: any) => tokenInfo.token);
+    }
+
+    if (fcmTokens.length === 0 && userData?.fcmToken) {
+      fcmTokens = [userData.fcmToken];
+    }
+
+    // 중복 토큰 제거
+    fcmTokens = [...new Set(fcmTokens)];
+
+    if (fcmTokens.length === 0) {
+      throw new functions.https.HttpsError('failed-precondition', 'No FCM tokens found for user');
+    }
+
+    // 테스트 알림 메시지 구성
+    const message = {
+      notification: {
+        title: '🏃‍♂️ 테스트 알림',
+        body: '알림이 정상적으로 작동하고 있습니다! 💪',
+      },
+      data: {
+        type: 'test_notification',
+        url: '/dashboard',
+        timestamp: Date.now().toString()
+      },
+      tokens: fcmTokens
+    };
+
+    // FCM 전송
+    const response = await admin.messaging().sendEachForMulticast(message);
+
+    logger.info(`Test notification sent successfully`, {
+      userId,
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+      tokenCount: fcmTokens.length
+    });
+
+    // 실패한 토큰 처리
+    if (response.failureCount > 0) {
+      const failedTokens: string[] = [];
+      response.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          failedTokens.push(fcmTokens[idx]);
+          logger.warn(`Failed to send to token: ${fcmTokens[idx]}`, resp.error);
+        }
+      });
+    }
+
+    return {
+      success: true,
+      successCount: response.successCount,
+      failureCount: response.failureCount
+    };
+
+  } catch (error) {
+    logger.error('Error sending test notification:', error);
+    throw new functions.https.HttpsError('internal', 'Failed to send test notification');
   }
 });
 
