@@ -11,6 +11,20 @@ import * as logger from "firebase-functions/logger";
 // Firebase Admin 초기화
 admin.initializeApp();
 
+// 운동 타입 한글 변환 함수
+function getExerciseTypeKorean(exerciseType: string): string {
+  switch (exerciseType) {
+    case 'upper':
+      return '상체';
+    case 'lower':
+      return '하체';
+    case 'cardio':
+      return '유산소';
+    default:
+      return exerciseType;
+  }
+}
+
 // FCM 알림 전송 인터페이스
 interface SendNotificationData {
   targetToken: string;
@@ -267,7 +281,8 @@ export const notifyFriends = onCall(async (request) => {
 
     // 알림 메시지 구성
     const title = "🏃‍♂️ 친구가 운동했어요!";
-    const body = `${userName}님이 ${exerciseType} 운동을 완료했어요! 💪`;
+    const exerciseTypeKorean = getExerciseTypeKorean(exerciseType);
+    const body = `${userName}님이 ${exerciseTypeKorean} 운동을 완료했어요! 💪`;
 
     // 멀티캐스트 메시지 구성
     const message = {
@@ -571,7 +586,7 @@ export const dailyExerciseReminder = onSchedule({
       const userData = userDoc.data();
       const userId = userDoc.id;
 
-      // 활성 FCM 토큰이 있는 사용자만 처리
+      // 활성 FCM 토큰이 있는 사용자만 처리 (중복 제거)
       let fcmTokens: string[] = [];
 
       if (userData?.fcmTokens && Array.isArray(userData.fcmTokens)) {
@@ -584,9 +599,15 @@ export const dailyExerciseReminder = onSchedule({
             return lastUsed && lastUsed >= thirtyDaysAgo;
           })
           .map((tokenInfo: any) => tokenInfo.token);
-      } else if (userData?.fcmToken) {
+      }
+
+      // fcmTokens 배열이 비어있고 레거시 fcmToken이 있는 경우에만 추가
+      if (fcmTokens.length === 0 && userData?.fcmToken) {
         fcmTokens = [userData.fcmToken];
       }
+
+      // 중복 토큰 제거
+      fcmTokens = [...new Set(fcmTokens)];
 
       if (fcmTokens.length > 0) {
         const reminderTime = userData.notificationSettings?.reminderTime || "20:00";
