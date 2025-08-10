@@ -253,19 +253,19 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center space-x-3">
             <button
               onClick={() => router.back()}
-              className="p-2 -ml-2 text-gray-600 hover:text-gray-900"
+              className="p-2 -ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <Bell className="w-6 h-6 text-blue-600" />
-            <h1 className="text-xl font-semibold text-gray-900">알림 설정</h1>
+            <Bell className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">알림 설정</h1>
           </div>
         </div>
       </header>
@@ -275,22 +275,22 @@ export default function NotificationsPage() {
         <BackgroundNotificationGuide />
 
         {/* 알림 상태 */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold text-gray-900">푸시 알림</h2>
-              <p className="text-sm text-gray-600">운동 리마인더 및 알림 받기</p>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100">푸시 알림</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">운동 리마인더 및 알림 받기</p>
             </div>
             <NotificationStatus />
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-gray-700">알림 활성화</span>
+            <span className="text-gray-700 dark:text-gray-300">알림 활성화</span>
             <button
               onClick={handleToggleNotifications}
               disabled={isLoading}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.enabled ? 'bg-blue-600' : 'bg-gray-200'
+                settings.enabled ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-600'
               } ${isLoading ? 'opacity-50' : ''}`}
             >
               <span
@@ -304,10 +304,10 @@ export default function NotificationsPage() {
 
         {/* 알림 시간 설정 */}
         {settings.enabled && (
-          <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-4">
-              <Clock className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">알림 시간</h3>
+              <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">알림 시간</h3>
             </div>
 
             <div className="space-y-3">
@@ -315,7 +315,7 @@ export default function NotificationsPage() {
                 type="time"
                 value={settings.reminderTime}
                 onChange={(e) => handleTimeChange(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
 
               <Button
@@ -331,10 +331,10 @@ export default function NotificationsPage() {
 
         {/* 알림 요일 설정 */}
         {settings.enabled && (
-          <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-4">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">알림 요일</h3>
+              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">알림 요일</h3>
             </div>
 
             <div className="grid grid-cols-7 gap-2">
@@ -344,8 +344,8 @@ export default function NotificationsPage() {
                   onClick={() => handleDayToggle(day.value)}
                   className={`p-3 rounded-lg text-sm font-medium transition-colors ${
                     settings.reminderDays.includes(day.value)
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white dark:bg-blue-500'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
                   {day.short}
@@ -357,8 +357,8 @@ export default function NotificationsPage() {
 
         {/* 추가 알림 설정 */}
         {settings.enabled && (
-          <div className="bg-white rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="font-semibold text-gray-900">추가 알림</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm space-y-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">추가 알림</h3>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -408,8 +408,8 @@ export default function NotificationsPage() {
 
         {/* 테스트 알림 */}
         {settings.enabled && (
-          <div className="bg-white rounded-xl p-6 shadow-sm space-y-3">
-            <h3 className="font-medium text-gray-900 mb-3">알림 테스트</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm space-y-3">
+            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">알림 테스트</h3>
 
             {/* 클라이언트 알림 테스트 */}
             <Button
